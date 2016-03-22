@@ -1,6 +1,6 @@
 /******************************************************************************
   *
-  * The MUlktidimensional Knapsack Problem
+  * The Multidimensional Knapsack Problem
   *
   * @ Pepe Gallardo, 2016
   *
@@ -19,9 +19,9 @@ class MKProblem( val values : Array[Double]
 
   val numConstraints : Int = constraints.length
 
-  // Check problem predonditions
+  // Check problem preconditions
   require(weights.length == numConstraints
-    ,"MKProblem: number of constraints must be the same as number of weights"
+    ,"MKProblem: Number of constraints must be the same as number of weights"
   )
   require(values.forall(_ > 0)
     ,"MKProblem: All values must be > 0"
@@ -37,8 +37,8 @@ class MKProblem( val values : Array[Double]
   )
 
   val heuristicOrder : Array[Int] = {
-    // Para la relajación lineal, cada variable x está restringida a: 0 <= x <= 1
-    //    0 <= x ya forma parte del problem, pero es necesario imponer la restricción x <= 1
+    // For linear relaxation, each variable x must be in: 0 <= x <= 1
+    //    0 <= x is already part of problem, but we need to impose x <= 1
 
     val extraConstraints: Array[Array[Double]] = new Array(numObjects)
     for (i <- 0 until numObjects) {
@@ -109,7 +109,7 @@ case class LinearRelaxation(c : Array[Double], A : Array[Array[Double]], b : Arr
   val numConstraints = A.length
 
   require(A.forall(_.length == numVars), "LinearRelaxation: number of columns in A must be equal to number of variables")
-  require(A.length == b.length, "LinearRelaxation: number of constraints must be equal to b length")
+  require(A.length == b.length, "LinearRelaxation: number of constraints must be equal to length of b")
 
   private var opt : Option[Simplex] = None
 

@@ -160,7 +160,7 @@ abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, pro
   }
 }
 
-case class StandardSteadyStateTimedEA(seed : Int, problem : Problem, maxRunTime : Int)
+case class StandardSteadyStateTimedEA(seed : Int, problem : Problem, maxRunTime : Double)
      extends StandardOperatorsSteadyStateEA( seed
                                             , new StandardParams(problem).copy(maxRunTime = maxRunTime)
                                             , problem

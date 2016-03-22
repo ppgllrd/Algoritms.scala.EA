@@ -25,7 +25,7 @@ case class Population(size : Int, numVars : Int) {
     scala.util.Sorting.quickSort(individuals)(Ordering by (_.fitness))
   }
 
-  // replace and individual and keep resulting population sorted
+  // replace an individual and keep resulting population sorted
   def replace(idx : Int, ind : Individual): Unit = {
     val toReplace = individuals(idx)
     var i = idx
