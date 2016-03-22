@@ -12,6 +12,9 @@ package examples.MKP;
  *  RHS in column M+N, the objective function in row M, and
  *  slack variables in columns M through M+N-1.
  *
+ *  Taken from:
+ *    https://github.com/aistrate/AlgorithmsSedgewick/blob/master/6-Context/6-5-Reductions/Simplex.java
+ *
  *************************************************************************/
 
 public class Simplex {
@@ -29,10 +32,9 @@ public class Simplex {
         N = c.length;
         a = new double[M+1][N+M+1];
         for (int i = 0; i < M; i++)
-            for (int j = 0; j < N; j++)
-                a[i][j] = A[i][j];
+            System.arraycopy(A[i], 0, a[i], 0, N);
         for (int i = 0; i < M; i++) a[i][N+i] = 1.0;
-        for (int j = 0; j < N; j++) a[M][j]   = c[j];
+        System.arraycopy(c, 0, a[M], 0, N);
         for (int i = 0; i < M; i++) a[i][M+N] = b[i];
 
         basis = new int[M];
@@ -137,8 +139,8 @@ public class Simplex {
         double[] x = primal();
 
         // check that x >= 0
-        for (int j = 0; j < x.length; j++) {
-            if (x[j] < 0.0) {
+        for (double aX : x) {
+            if (aX < 0.0) {
                 //StdOut.println("x[" + j + "] = " + x[j] + " is negative");
                 return false;
             }
@@ -164,8 +166,8 @@ public class Simplex {
         double[] y = dual();
 
         // check that y >= 0
-        for (int i = 0; i < y.length; i++) {
-            if (y[i] < 0.0) {
+        for (double aY : y) {
+            if (aY < 0.0) {
                 //StdOut.println("y[" + i + "] = " + y[i] + " is negative");
                 return false;
             }

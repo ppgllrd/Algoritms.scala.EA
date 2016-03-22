@@ -8,7 +8,7 @@
 
 package EA
 
-case class Individual(val numVars : Int) {
+case class Individual(numVars : Int) {
   val chromosome : Chromosome = new Array[Gen](numVars)
   var fitness : Fitness = 0
 

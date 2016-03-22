@@ -9,7 +9,7 @@
 package EA.util
 
 case class Timer() {
-import EA.Seconds
+  import EA.Seconds
 
   private var startTime = System.currentTimeMillis()
 

@@ -9,20 +9,23 @@
 
 package EA
 
-case class Population(val size : Int, numVars : Int) {
+case class Population(size : Int, numVars : Int) {
   private val individuals = Array.fill[Individual](size)(new Individual(numVars))
 
   def apply(idx : Int) = individuals(idx)
 
-  def worst() : Individual = individuals(0)
+  val worstIdx : Int = 0
+  def worst() : Individual = individuals(worstIdx)
 
-  def best() : Individual = individuals(size-1)
+  val bestIdx : Int = size-1
+  def best() : Individual = individuals(bestIdx)
 
   def sort(): Unit = {
     // sorted in ascending order wrt fitness
     scala.util.Sorting.quickSort(individuals)(Ordering by (_.fitness))
   }
 
+  // replace and individual and keep resulting population sorted
   def replace(idx : Int, ind : Individual): Unit = {
     val toReplace = individuals(idx)
     var i = idx

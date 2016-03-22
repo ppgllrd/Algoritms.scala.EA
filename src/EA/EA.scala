@@ -10,10 +10,10 @@ package EA
 
 import java.util.Random
 
-case class EAParams( val popSize : Int = 100
-                    , val crossProb : Probability = 0.9
-                    , val mutProb : Probability
-                    , val maxRunTime : Seconds
+case class EAParams( popSize : Int = 100
+                    , crossProb : Probability = 0.9
+                    , mutProb : Probability
+                    , maxRunTime : Seconds
                     ) {
   override def toString =
     "EAParams(popSize=%d, crossProb=%.3f, mutProb=%.3f, maxRunTime=%.3f segs.)".format(popSize,crossProb,mutProb,maxRunTime)
@@ -23,7 +23,7 @@ case class EAParams( val popSize : Int = 100
 abstract class EA(seed : Int, params : EAParams, problem : Problem) {
   def initialize(ind : Individual, idx : Int, rnd : Random)
 
-  def mutate(ind : Individual, rnd : Random, probMut : Probability)
+  def mutate(ind : Individual, mutProb : Probability, rnd : Random)
 
   def select(pop : Population, rnd : Random) : Individual
 
@@ -35,7 +35,8 @@ abstract class EA(seed : Int, params : EAParams, problem : Problem) {
 }
 
 
-abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem) extends EA(seed, params, problem) {
+abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
+          extends EA(seed, params, problem) {
   override def run() : Individual = {
     val temp = util.Timer()
     temp.reset()
@@ -46,7 +47,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem) e
     println(params)
 
     // initialize population
-    val population = Population(params.popSize, problem.numberVars)
+    val population = Population(params.popSize, problem.numVars)
     for (i <- 0 until params.popSize) {
       val ind = population(i)
       initialize(ind, i, rnd)
@@ -54,9 +55,9 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem) e
     }
     population.sort()
 
-    val ind = Individual(problem.numberVars)
+    val ind = Individual(problem.numVars)
 
-    val best = Individual(problem.numberVars)
+    val best = Individual(problem.numVars)
     best.copyFrom(population.best())
 
     println("Fitness/Iter/Time")
@@ -76,7 +77,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem) e
       } else
         ind.copyFrom(Selection.random(population, rnd))
 
-      mutate(ind, rnd, params.mutProb)
+      mutate(ind, params.mutProb, rnd)
 
       ind.fitness = problem.evalSolution(ind.chromosome)
 
@@ -92,15 +93,21 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem) e
 }
 
 
-case class StandardSteadyStateEA(seed : Int, problem : Problem, maxRunTime : Int) extends
-            SteadyStateEA(seed, EAParams(popSize = 100, crossProb = 0.9, mutProb = 1.0/problem.numberVars, maxRunTime = maxRunTime), problem) {
-
+case class StandardSteadyStateEA(seed : Int, problem : Problem, maxRunTime : Int)
+     extends SteadyStateEA( seed
+                           , EAParams( popSize = 100
+                                     , crossProb = 0.9
+                                     , mutProb = 1.0/problem.numVars
+                                     , maxRunTime = maxRunTime
+                                     )
+                           , problem
+                           ) {
   override def initialize(ind : Individual, idx : Int, rnd : Random) {
     Initialization.random(ind, rnd)
   }
 
-  override def mutate(ind : Individual, rnd : Random, probMut : Probability) {
-    Mutation.flipBit(ind, rnd, probMut)
+  override def mutate(ind : Individual, mutProb : Probability, rnd : Random) {
+    Mutation.flipBit(ind, mutProb, rnd)
   }
 
   override def select(pop : Population, rnd : Random) =

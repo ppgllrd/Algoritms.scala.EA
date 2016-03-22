@@ -71,8 +71,8 @@ class MKProblem( val values : Array[Double]
     v
   }
 
-  // Checks if an assignment staisfies all constraints
-  def cumpleRestricciones(xs : Chromosome) : Boolean = {
+  // Checks if an assignment satisfies all constraints
+  def checkConstraints(xs : Chromosome) : Boolean = {
     false // toDo
   }
 
@@ -80,7 +80,7 @@ class MKProblem( val values : Array[Double]
     // toDo
   }
 
-  val numberVars = numObjects
+  val numVars = numObjects
 
   def evalSolution(xs : Chromosome) : Fitness = {
     repair(xs)
@@ -104,7 +104,7 @@ object MKProblem {
 
 // max cx : Ax <= b, x >= 0 }.
 // Assumes that b >= 0 so that x = 0 is a basic feasible solution.
-case class LinearRelaxation(val c : Array[Double], val A : Array[Array[Double]], val b : Array[Double]) {
+case class LinearRelaxation(c : Array[Double], A : Array[Array[Double]], b : Array[Double]) {
   val numVars = c.length
   val numConstraints = A.length
 

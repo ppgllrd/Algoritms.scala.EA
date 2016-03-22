@@ -12,7 +12,7 @@ import java.util.Random
 
 object Replacement {
   def worst(pop : Population, ind : Individual): Unit = {
-    pop.replace(0, ind)
+    pop.replace(pop.worstIdx, ind)
   }
 
   def random(pop : Population, ind : Individual, rnd : Random): Unit = {
@@ -20,6 +20,6 @@ object Replacement {
   }
 
   def best(pop : Population, ind : Individual): Unit = {
-    pop.replace(pop.size-1, ind)
+    pop.replace(pop.bestIdx, ind)
   }
 }

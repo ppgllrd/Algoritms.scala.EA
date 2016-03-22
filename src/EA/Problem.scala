@@ -10,7 +10,7 @@ package EA
 
 trait Problem {
   // number of variables in chromosome
-  def numberVars : Int
+  def numVars : Int
 
   // evaluates a chromosome corresponding to a solution
   def evalSolution(xs : Chromosome) : Fitness

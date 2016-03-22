@@ -11,9 +11,10 @@ package examples.oneMax
 import java.util.Locale
 import EA._
 
-case class OneMax(val numberVars : Int) extends Problem {
+
+case class OneMax(numVars : Int) extends Problem {
   override def isOptimal(xs: Chromosome): Boolean =
-    xs.count(_==1) == numberVars
+    xs.count(_==1) == numVars
 
   override def evalSolution(xs: Chromosome): Fitness =
     xs.count(_==1)
@@ -24,8 +25,8 @@ object OneMaxGA extends App {
   // Use English formats
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-  val n = 500 // number of variables
-  val p = OneMax(n)
+  val numVars = 500 // number of variables
+  val p = OneMax(numVars)
 
   val ga = StandardSteadyStateEA(seed = 0, problem = p, maxRunTime = 1000)
 
