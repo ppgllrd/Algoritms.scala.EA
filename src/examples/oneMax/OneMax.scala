@@ -13,11 +13,11 @@ import EA._
 
 
 case class OneMax(numVars : Int) extends Problem {
-  override def isOptimal(xs: Chromosome): Boolean =
-    xs.count(_==1) == numVars
+  override def isOptimal(ind: Individual): Boolean =
+    ind.fitness == numVars
 
-  override def evalSolution(xs: Chromosome): Fitness =
-    xs.count(_==1)
+  override def computeFitness(ind: Individual): Fitness =
+    ind.chromosome.count(_==1)
 }
 
 
