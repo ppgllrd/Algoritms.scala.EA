@@ -84,7 +84,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
     for (i <- 0 until params.popSize) {
       val ind = state.population(i)
       initialize(ind, i, state)
-      ind.fitness = problem.evalSolution(ind.chromosome)
+      ind.fitness = problem.computeFitness(ind)
     }
     state.population.sort()
 
@@ -108,7 +108,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
 
       mutate(ind, state)
 
-      ind.fitness = problem.evalSolution(ind.chromosome)
+      ind.fitness = problem.computeFitness(ind)
 
       if(ind.fitness > state.best.fitness) {
         state.best.copyFrom(ind)
@@ -153,7 +153,7 @@ abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, pro
     Replacement.worst(eaState.population, ind)
   }
 
-  private val format = "%10.2f\t%5d\t%10.2f"
+  private val format = "%10.2f\t%10d\t%10.2f"
   override def printIncumbent(eaState : EAState): Unit = {
     println(format.format(eaState.best.fitness, eaState.iter, eaState.timer.elapsedTime()))
 
@@ -166,7 +166,7 @@ case class StandardSteadyStateTimedEA(seed : Int, problem : Problem, maxRunTime 
                                             , problem
                                             ) {
   override def endCondition(eaState: EAState) =
-    eaState.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best.chromosome)
+    eaState.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
 }
 
 case class StandardSteadyStateIteredEA(seed : Int, problem : Problem, maxIters : Int)
@@ -175,6 +175,6 @@ case class StandardSteadyStateIteredEA(seed : Int, problem : Problem, maxIters :
                                          , problem
                                          ) {
   override def endCondition(eaState: EAState) =
-    eaState.iter >= eaState.params.maxIters || problem.isOptimal(eaState.best.chromosome)
+    eaState.iter >= eaState.params.maxIters || problem.isOptimal(eaState.best)
 }
 

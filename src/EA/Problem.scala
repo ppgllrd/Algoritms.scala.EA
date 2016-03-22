@@ -12,9 +12,9 @@ trait Problem {
   // number of variables in chromosome
   def numVars : Int
 
-  // evaluates a chromosome corresponding to a solution
-  def evalSolution(xs : Chromosome) : Fitness
+  // evaluates the chromosome corresponding to a solution
+  def computeFitness(ind : Individual) : Fitness
 
   // checks if solution is optimal
-  def isOptimal(xs : Chromosome) : Boolean
+  def isOptimal(ind : Individual) : Boolean
 }
