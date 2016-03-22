@@ -28,10 +28,10 @@ object OneMaxGA extends App {
   val numVars = 500 // number of variables
   val p = OneMax(numVars)
 
-  val ga = StandardSteadyStateEA(seed = 0, problem = p, maxRunTime = 1000)
+  val ga = StandardSteadyStateTimedEA(seed = 0, problem = p, maxRunTime = 1000)
 
-  val best = ga.run()
+  val result = ga.run()
 
-  print("Final solution: "+best)
+  print("Final solution: "+result.best)
 }
 
