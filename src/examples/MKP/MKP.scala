@@ -102,15 +102,13 @@ class MKProblem( val profits : Array[Double]
       for(j <- 0 until numObjects)
         sums(i) += xs(j) * constraints(i)(j)
 
-    val sums2 = sums.clone()
-
     // Drop variables until all constraints are satisfied
     var violatedConstraints = collection.mutable.Set[Int]()
     for(i <- 0 until numConstraints)
       if(sums(i) > capacities(i))
         violatedConstraints += i
 
-    var it = heuristicOrder.reverseIterator
+    val it = heuristicOrder.reverseIterator
     while(violatedConstraints.nonEmpty && it.hasNext) {
       val j = it.next()
       if(xs(j)>zero) {
@@ -124,18 +122,28 @@ class MKProblem( val profits : Array[Double]
     }
 
     // Add variables (in reverse order) while all constraints are satisfied
-    it = heuristicOrder.iterator
-    var add = true
-    while(add && it.hasNext) {
-      val j = it.next()
+    for(i <- 0 until numConstraints) {
+      sums(i) = 0
+      for (j <- 0 until numObjects)
+        sums(i) += xs(j) * constraints(i)(j)
+    }
+
+    for(j <- heuristicOrder) {
       if(xs(j)<one) {
-        for (i <- 0 until numConstraints) {
-          sums2(i) += constraints(i)(j)
-          if (sums2(i) > capacities(i))
+        var add = true
+        var i = 0
+        while(add && i < numConstraints) {
+          sums(i) += constraints(i)(j)
+          if(sums(i) > capacities(i))
             add = false
+          else
+            i += 1
         }
         if(add)
           xs(j) = one
+        else  // undo
+          for(k <- 0 to i)
+            sums(k) -= constraints(k)(j)
       }
     }
   }
@@ -247,25 +255,33 @@ object ChuBeasleyEA extends App {
   import java.util.Locale
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-  val seed = 0
-  val fileName = "data/MKP/OR10x250-00.kp1"
+/*  val seed = 0
+  val fileName = "data/MKP/OR10x100-00.kp1"
   val maxTime = 10
-  /*
+*/
+
   if(args.length < 3) {
     println("Usage: <seed> <file> <maxTime(seg.)>")
     System.exit(0)
   }
-
   val seed = args(0).toInt
   val fileName = args(1)
   val maxTime = args(2).toDouble
-*/
+
+
   val p = ChuBeasley.fromFile(fileName)
 
-  val ea = StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, problem = p, maxRunTime = maxTime)
+  val ea = new StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, problem = p, maxRunTime = maxTime) {
+    override def replace(ind : Individual, eaState : EAState) {
+      Replacement.randomButBest(population.size/2, eaState.population, ind, eaState.rnd)
+    }
+  }
 
   val result = ea.run()
-
-  println("Final solution: "+result.best)
-  println("EAResult: "+result)
+  if(!p.checkConstraints(result.best.chromosome)) {
+    println("ERROR: non-valid solution!")
+  } else {
+    println("Final solution: " + result.best)
+    println("EAResult: " + result)
+  }
 }
