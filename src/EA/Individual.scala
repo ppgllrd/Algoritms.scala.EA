@@ -23,6 +23,11 @@ case class Individual(numVars : Int) {
     this.fitness = that.fitness
   }
 
+  override def equals(that : Any): Boolean = that match {
+    case ind : Individual => this.chromosome.sameElements(ind.chromosome)
+    case _                => false
+  }
+
   override def toString : String = {
     val sb = new StringBuilder("Individual(%.5f, ".format(fitness))
     for(g <- chromosome)

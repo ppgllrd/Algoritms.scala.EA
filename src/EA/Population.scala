@@ -9,10 +9,17 @@
 
 package EA
 
-case class Population(size : Int, numVars : Int) {
-  private val individuals = Array.fill[Individual](size)(new Individual(numVars))
 
-  def apply(idx : Int) = individuals(idx)
+trait Population {
+  val size : Int // number of individuals
+
+  protected val ea : EA // access to EA where this population is used
+
+  protected val individuals : Array[Individual] =
+    Array.fill[Individual](size)(new Individual(ea.problem.numVars))
+
+  def apply(idx : Int) : Individual =
+    individuals(idx)
 
   val worstIdx : Int = 0
   def worst() : Individual = individuals(worstIdx)
@@ -23,6 +30,12 @@ case class Population(size : Int, numVars : Int) {
   def sort(): Unit = {
     // sorted in ascending order wrt fitness
     scala.util.Sorting.quickSort(individuals)(Ordering by (_.fitness))
+  }
+
+  def initialize(eaState : EAState) {
+    for (i <- 0 until size)
+      ea.initialize(individuals(i), i, eaState)
+    sort()
   }
 
   // replace an individual and keep resulting population sorted
@@ -51,5 +64,34 @@ case class Population(size : Int, numVars : Int) {
     for(i <- 0 until size-1)
       if(individuals(i).fitness > individuals(i+1).fitness)
         sys.error("checkInOrder: failed. Individuals are not in order")
+  }
+}
+
+
+case class StandardPopulation(size : Int, ea : EA) extends Population
+
+// Repeated individuals are not allowed
+case class NonRepeatedPopulation(size : Int, ea : EA) extends Population {
+  private def contains(ind : Individual, maxIdx : Int) : Boolean = {
+    for(i <- 0 until maxIdx)
+      if(ind==individuals(i))
+        return true
+    false
+  }
+
+  override def initialize(eaState : EAState) {
+    for(i <- 0 until size)
+      do
+        ea.initialize(individuals(i), i, eaState)
+      while(contains(individuals(i), i-1))
+    sort()
+  }
+
+  // replace an individual and keep resulting population sorted
+  override def replace(idx : Int, ind : Individual): Unit = {
+    if (contains(ind, size))
+      return
+    else
+      super.replace(idx, ind)
   }
 }

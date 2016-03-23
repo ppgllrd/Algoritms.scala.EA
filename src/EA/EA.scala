@@ -42,7 +42,10 @@ case class EAResult( best : Individual // best sol found
 }
 
 
-abstract class EA(seed : Int, params : EAParams, problem : Problem) {
+abstract class EA(seed : Int, val params : EAParams, val problem : Problem) {
+  protected val population : Population
+
+  // should also assign new individual fitness
   def initialize(ind : Individual, idx : Int, eaState : EAState)
 
   def mutate(ind : Individual, eaState : EAState)
@@ -66,7 +69,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
   override def run() : EAResult = {
 
     val state =
-      EAState( population = Population(params.popSize, problem.numVars)
+      EAState( population = population
              , best = Individual(problem.numVars)
              , iter = 0
              , timer = util.Timer()
@@ -81,12 +84,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
     println(params)
 
     // initialize population
-    for (i <- 0 until params.popSize) {
-      val ind = state.population(i)
-      initialize(ind, i, state)
-      ind.fitness = problem.computeFitness(ind)
-    }
-    state.population.sort()
+    population.initialize(state)
 
     val ind = Individual(problem.numVars)
 
@@ -135,8 +133,12 @@ class StandardParams(problem : Problem)
 
 abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, problem : Problem)
   extends SteadyStateEA(seed, params, problem) {
+
+  override val population : Population = StandardPopulation(params.popSize, this)
+
   override def initialize(ind : Individual, idx : Int, eaState : EAState) {
     Initialization.random(ind, eaState.rnd)
+    ind.fitness = problem.computeFitness(ind)
   }
 
   override def mutate(ind : Individual, eaState : EAState) {
@@ -160,21 +162,56 @@ abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, pro
   }
 }
 
-case class StandardSteadyStateTimedEA(seed : Int, problem : Problem, maxRunTime : Double)
-     extends StandardOperatorsSteadyStateEA( seed
-                                            , new StandardParams(problem).copy(maxRunTime = maxRunTime)
-                                            , problem
-                                            ) {
-  override def endCondition(eaState: EAState) =
+
+abstract class StandardOperatorsSteadyStateNonRepeatedPopEA(seed : Int, params : EAParams, problem : Problem)
+          extends StandardOperatorsSteadyStateEA(seed, params, problem) {
+  override val population = NonRepeatedPopulation(params.popSize, this)
+}
+
+
+trait TimedEA {
+  val problem : Problem
+
+  def endCondition(eaState: EAState) =
     eaState.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
 }
 
-case class StandardSteadyStateIteredEA(seed : Int, problem : Problem, maxIters : Int)
+
+case class StandardSteadyStateTimedEA(seed : Int, override val problem : Problem, maxRunTime : Double)
   extends StandardOperatorsSteadyStateEA( seed
-                                         , new StandardParams(problem).copy(maxIters = maxIters)
+                                         , new StandardParams(problem).copy(maxRunTime = maxRunTime)
                                          , problem
-                                         ) {
-  override def endCondition(eaState: EAState) =
+                                         )
+  with TimedEA
+
+
+case class StandardSteadyStateNonRepeatedPopTimedEA(seed : Int, override val problem : Problem, maxRunTime : Double)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA( seed
+                                                       , new StandardParams(problem).copy(maxRunTime = maxRunTime)
+                                                       , problem
+                                                       )
+  with TimedEA
+
+
+trait IteratedEA {
+  val problem : Problem
+
+  def endCondition(eaState: EAState) =
     eaState.iter >= eaState.params.maxIters || problem.isOptimal(eaState.best)
 }
 
+
+case class StandardSteadyStateIteratedEA(seed : Int, override val problem : Problem, maxIters : Int)
+  extends StandardOperatorsSteadyStateEA( seed
+                                         , new StandardParams(problem).copy(maxIters = maxIters)
+                                         , problem
+                                         )
+  with IteratedEA
+
+
+case class StandardSteadyStateNonRepeatedPopIteratedEA(seed : Int, override val problem : Problem, maxIters : Int)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA( seed
+                                                       , new StandardParams(problem).copy(maxIters = maxIters)
+                                                       , problem
+                                                       )
+  with IteratedEA

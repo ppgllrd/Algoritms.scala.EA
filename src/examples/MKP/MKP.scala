@@ -69,33 +69,6 @@ class MKProblem( val profits : Array[Double]
     ,"MKProblem: Each constraint coefficient must be >= 0"
   )
 
-  val heuristicOrder : Array[Int] = {
-    // For linear relaxation, each variable x must be in: 0 <= x <= 1
-    //    0 <= x is already part of problem, but we need to impose x <= 1
-    val extraConstraints = Array.ofDim[Double](numObjects, numObjects)
-    for (j <- 0 until numObjects)
-      extraConstraints(j)(j) = 1
-
-    val extraCapacities = Array.fill[Double](numObjects)(1)
-
-    val linearRelaxation = LinearRelaxation(profits, constraints ++ extraConstraints, capacities ++ extraCapacities)
-    linearRelaxation.solve()
-
-    val a = linearRelaxation.dualSol()
-
-    // compute pseudo-utility values
-    val u = new Array[Double](numObjects)
-    for(j <- 0 until numObjects) {
-      var s = 0.0
-      for(i <- 0 until numConstraints)
-        s += a(i) * constraints(i)(j)
-      u(j) = profits(j) / s
-    }
-
-    val ps = u.zip(Array.range(0,numObjects)) // u x order of variables
-    scala.util.Sorting.quickSort(ps)(Ordering by (- _._1)) // sort in decreasing order wrt to u
-    ps.map(_._2) // return order of variables
-  }
 
   // Evals objective function for an assignments of vars
   def totalProfit(xs : Chromosome) : Fitness = {
@@ -118,8 +91,10 @@ class MKProblem( val profits : Array[Double]
     true
   }
 
-  private val zero : Byte = 0
-  private val one : Byte = 1
+  protected val heuristicOrder : Array[Int] = Array.range(0, numObjects)
+
+  protected val zero : Byte = 0
+  protected val one : Byte = 1
 
   def repair(xs : Chromosome): Unit = {
     val sums = new Array[Double](numConstraints)
@@ -148,7 +123,7 @@ class MKProblem( val profits : Array[Double]
       }
     }
 
-    // Add variables (in reverese order) while all constraints are satisfied
+    // Add variables (in reverse order) while all constraints are satisfied
     it = heuristicOrder.iterator
     var add = true
     while(add && it.hasNext) {
@@ -225,25 +200,72 @@ object MKProblem {
 }
 
 
-object Test extends App {
+class ChuBeasley( override val profits : Array[Double]
+                 , override val constraints : Array[Array[Double]]
+                 , override val capacities : Array[Double]
+                 , override val optimum : Fitness = 0
+                 ) extends MKProblem(profits,constraints,capacities,optimum) {
+
+  override val heuristicOrder : Array[Int] = {
+    // For linear relaxation, each variable x must be in: 0 <= x <= 1
+    //    0 <= x is already part of problem, but we need to impose x <= 1
+    val extraConstraints = Array.ofDim[Double](numObjects, numObjects)
+    for (j <- 0 until numObjects)
+      extraConstraints(j)(j) = 1
+
+    val extraCapacities = Array.fill[Double](numObjects)(1)
+
+    val linearRelaxation = LinearRelaxation(profits, constraints ++ extraConstraints, capacities ++ extraCapacities)
+    linearRelaxation.solve()
+
+    val a = linearRelaxation.dualSol()
+
+    // compute pseudo-utility values
+    val u = new Array[Double](numObjects)
+    for(j <- 0 until numObjects) {
+      var s = 0.0
+      for(i <- 0 until numConstraints)
+        s += a(i) * constraints(i)(j)
+      u(j) = profits(j) / s
+    }
+
+    val ps = u.zip(Array.range(0,numObjects)) // u x order of variables
+    scala.util.Sorting.quickSort(ps)(Ordering by (- _._1)) // sort in decreasing order wrt to u
+    ps.map(_._2) // return order of variables
+  }
+}
+
+object ChuBeasley {
+  def fromFile(fileName : String) : ChuBeasley = {
+    val mkp = MKProblem.fromFile(fileName)
+    new ChuBeasley(mkp.profits, mkp.constraints, mkp.capacities, mkp.optimum)
+  }
+}
+
+object ChuBeasleyEA extends App {
   // Use English formats
   import java.util.Locale
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-  val p = MKProblem.fromFile("data/MKP/OR10x250-00.kp1")
-
-  val ea = new StandardSteadyStateTimedEA(seed = 1, problem = p, maxRunTime = 1000) {
-/*
-    override def recombine(child : Individual, parent1 : Individual, parent2 : Individual, eaState : EAState): Unit = {
-      Recombination.singlePoint(child, parent1, parent2, eaState.rnd)
-    }
-    */
-    override def replace(ind : Individual, eaState : EAState) {
-      Replacement.randomButBest(5,eaState.population, ind, eaState.rnd)
-    }
+  val seed = 0
+  val fileName = "data/MKP/OR10x250-00.kp1"
+  val maxTime = 10
+  /*
+  if(args.length < 3) {
+    println("Usage: <seed> <file> <maxTime(seg.)>")
+    System.exit(0)
   }
+
+  val seed = args(0).toInt
+  val fileName = args(1)
+  val maxTime = args(2).toDouble
+*/
+  val p = ChuBeasley.fromFile(fileName)
+
+  val ea = StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, problem = p, maxRunTime = maxTime)
 
   val result = ea.run()
 
-  print("Final solution: "+result.best)
+  println("Final solution: "+result.best)
+  println("EAResult: "+result)
 }

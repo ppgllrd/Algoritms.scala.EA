@@ -21,7 +21,7 @@ case class OneMax(numVars : Int) extends Problem {
 }
 
 
-object OneMaxGA extends App {
+object OneMaxEA extends App {
   // Use English formats
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
