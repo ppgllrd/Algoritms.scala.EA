@@ -10,6 +10,8 @@ package EA
 
 import java.util.Random
 
+import EA.util.{Timer, Logger}
+
 case class EAParams( popSize : Int = 100
                     , crossProb : Probability = 0.9
                     , mutProb : Probability
@@ -25,7 +27,7 @@ case class EAParams( popSize : Int = 100
 case class EAState( population : Population
                    , best : Individual
                    , var iter : Int
-                   , timer : util.Timer
+                   , logger : Logger
                    , rnd : Random
                    , params : EAParams
                    , problem : Problem
@@ -36,6 +38,7 @@ case class EAState( population : Population
 case class EAResult( best : Individual // best sol found
                     , lastIter : Int // last iteration done
                     , bestIter : Int // iteration where best sol was found
+                    , logger: Logger
                     ) {
   override def toString =
     "EAResult(best=%s, lastIter=%d, bestIter=%d)".format(best, lastIter, bestIter)
@@ -58,13 +61,12 @@ abstract class EA(seed : Int, val params : EAParams, val problem : Problem) {
 
   def endCondition(eaState: EAState) : Boolean
 
-  def printIncumbent(eaState: EAState)
-
   def run() : EAResult
+
 }
 
 
-abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
+abstract class SteadyStateEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
           extends EA(seed, params, problem) {
   override def run() : EAResult = {
 
@@ -72,13 +74,11 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
       EAState( population = population
              , best = Individual(problem.numVars)
              , iter = 0
-             , timer = util.Timer()
+             , logger = logger
              , rnd = new Random(seed)
              , params = params
              , problem = problem
              )
-
-    state.timer.reset()
 
     println("Seed=%d".format(seed))
     println(params)
@@ -90,7 +90,8 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
 
     state.best.copyFrom(state.population.best())
 
-    printIncumbent(state)
+    state.logger.register(state.iter, state.best.fitness)
+
     var bestIter = state.iter
 
     while(!endCondition(state)) {
@@ -110,7 +111,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
 
       if(ind.fitness > state.best.fitness) {
         state.best.copyFrom(ind)
-        printIncumbent(state)
+        state.logger.register(state.iter, state.best.fitness)
         bestIter = state.iter
       }
 
@@ -119,6 +120,7 @@ abstract class SteadyStateEA(seed : Int, params : EAParams, problem : Problem)
     EAResult( best = state.best
             , lastIter = state.iter
             , bestIter = bestIter
+            , logger = state.logger
             )
   }
 }
@@ -131,8 +133,8 @@ class StandardParams(problem : Problem)
                    )
 
 
-abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, problem : Problem)
-  extends SteadyStateEA(seed, params, problem) {
+abstract class StandardOperatorsSteadyStateEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
+  extends SteadyStateEA(seed, logger, params, problem) {
 
   override val population : Population = StandardPopulation(params.popSize, this)
 
@@ -155,16 +157,11 @@ abstract class StandardOperatorsSteadyStateEA(seed : Int, params : EAParams, pro
     Replacement.worst(eaState.population, ind)
   }
 
-  private val format = "%10.2f\t%10d\t%10.2f"
-  override def printIncumbent(eaState : EAState): Unit = {
-    println(format.format(eaState.best.fitness, eaState.iter, eaState.timer.elapsedTime()))
-
-  }
 }
 
 
-abstract class StandardOperatorsSteadyStateNonRepeatedPopEA(seed : Int, params : EAParams, problem : Problem)
-          extends StandardOperatorsSteadyStateEA(seed, params, problem) {
+abstract class StandardOperatorsSteadyStateNonRepeatedPopEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
+          extends StandardOperatorsSteadyStateEA(seed, logger, params, problem) {
   override val population = NonRepeatedPopulation(params.popSize, this)
 }
 
@@ -173,23 +170,17 @@ trait TimedEA {
   val problem : Problem
 
   def endCondition(eaState: EAState) =
-    eaState.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
+    eaState.logger.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
 }
 
 
-case class StandardSteadyStateTimedEA(seed : Int, override val problem : Problem, maxRunTime : Double)
-  extends StandardOperatorsSteadyStateEA( seed
-                                         , new StandardParams(problem).copy(maxRunTime = maxRunTime)
-                                         , problem
-                                         )
+case class StandardSteadyStateTimedEA(seed: Int, logger: Logger, override val problem: Problem, maxRunTime: Probability)
+  extends StandardOperatorsSteadyStateEA(seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
   with TimedEA
 
 
-case class StandardSteadyStateNonRepeatedPopTimedEA(seed : Int, override val problem : Problem, maxRunTime : Double)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA( seed
-                                                       , new StandardParams(problem).copy(maxRunTime = maxRunTime)
-                                                       , problem
-                                                       )
+case class StandardSteadyStateNonRepeatedPopTimedEA(seed: Int, logger: Logger, override val problem: Problem, maxRunTime: Probability)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA(seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
   with TimedEA
 
 
@@ -201,17 +192,11 @@ trait IteratedEA {
 }
 
 
-case class StandardSteadyStateIteratedEA(seed : Int, override val problem : Problem, maxIters : Int)
-  extends StandardOperatorsSteadyStateEA( seed
-                                         , new StandardParams(problem).copy(maxIters = maxIters)
-                                         , problem
-                                         )
+case class StandardSteadyStateIteratedEA(seed: Int, logger: Logger, override val problem: Problem, maxIters: Int)
+  extends StandardOperatorsSteadyStateEA(seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
   with IteratedEA
 
 
-case class StandardSteadyStateNonRepeatedPopIteratedEA(seed : Int, override val problem : Problem, maxIters : Int)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA( seed
-                                                       , new StandardParams(problem).copy(maxIters = maxIters)
-                                                       , problem
-                                                       )
+case class StandardSteadyStateNonRepeatedPopIteratedEA(seed: Int, logger: Logger, override val problem: Problem, maxIters: Int)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA(seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
   with IteratedEA

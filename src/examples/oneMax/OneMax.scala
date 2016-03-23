@@ -10,6 +10,7 @@ package examples.oneMax
 
 import java.util.Locale
 import EA._
+import EA.util.Logger
 
 
 case class OneMax(numVars : Int) extends Problem {
@@ -25,13 +26,15 @@ object OneMaxEA extends App {
   // Use English formats
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
+  val logger = Logger()
   val numVars = 500 // number of variables
   val p = OneMax(numVars)
 
-  val ea = StandardSteadyStateTimedEA(seed = 0, problem = p, maxRunTime = 1000)
+  val ea = StandardSteadyStateTimedEA(seed = 0, logger = logger, problem = p, maxRunTime = 1000)
 
   val result = ea.run()
 
-  print("Final solution: "+result.best)
+  println("Final solution: "+result.best)
+  result.logger.print()
 }
 

@@ -9,6 +9,7 @@
 package examples.MKP
 
 import EA._
+import EA.util.Logger
 
 
 // max cx : Ax <= b, x >= 0 }.
@@ -255,10 +256,11 @@ object ChuBeasleyEA extends App {
   import java.util.Locale
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-/*  val seed = 0
+  /*
+  val seed = 0
   val fileName = "data/MKP/OR10x100-00.kp1"
   val maxTime = 10
-*/
+  */
 
   if(args.length < 3) {
     println("Usage: <seed> <file> <maxTime(seg.)>")
@@ -268,10 +270,10 @@ object ChuBeasleyEA extends App {
   val fileName = args(1)
   val maxTime = args(2).toDouble
 
-
   val p = ChuBeasley.fromFile(fileName)
+  val logger = Logger() // Execution time due to Simplex is not considered
 
-  val ea = new StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, problem = p, maxRunTime = maxTime) {
+  val ea = new StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, logger = logger, problem = p, maxRunTime = maxTime) {
     override def replace(ind : Individual, eaState : EAState) {
       Replacement.randomButBest(population.size/2, eaState.population, ind, eaState.rnd)
     }
@@ -282,6 +284,7 @@ object ChuBeasleyEA extends App {
     println("ERROR: non-valid solution!")
   } else {
     println("Final solution: " + result.best)
-    println("EAResult: " + result)
+    //println("EAResult: " + result)
+    result.logger.print(step = 50)
   }
 }
