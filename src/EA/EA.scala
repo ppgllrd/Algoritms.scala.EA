@@ -55,6 +55,10 @@ abstract class EA[Gene](seed : Int, val params : EAParams, val problem : Problem
   // should also assign fitness to new individual
   def initialize(ind : Individual[Gene], idx : Int, eaState : EAState[Gene])
 
+  def evaluate(ind : Individual[Gene], eaState : EAState[Gene]) : Fitness = {
+    problem.computeFitness(ind)
+  }
+
   def mutate(ind : Individual[Gene], eaState : EAState[Gene])
 
   def select(eaState : EAState[Gene]) : Individual[Gene]
@@ -111,7 +115,7 @@ abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params:
 
       mutate(ind, state)
 
-      ind.fitness = problem.computeFitness(ind)
+      ind.fitness = evaluate(ind, state)
 
       if(ind.fitness > state.best.fitness) {
         state.best.copyFrom(ind)

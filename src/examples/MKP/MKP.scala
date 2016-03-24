@@ -276,6 +276,37 @@ object ChuBeasleyEA extends App {
     override def replace(ind : Individual[Bit], eaState : EAState[Bit]) {
       Replacement.randomButBest(population.size/2, eaState.population, ind, eaState.rnd)
     }
+
+    override def recombine(child : Individual[Bit], parent1 : Individual[Bit], parent2 : Individual[Bit], eaState : EAState[Bit]): Unit = {
+      if(eaState.rnd.nextDouble() < 0.5)
+        Recombination.uniform(child, parent1, parent2, eaState.rnd)
+      else {
+        val pt = eaState.rnd.nextInt(child.numVars)
+
+        for (i <- 0 until pt)
+          child(p.heuristicOrder(i)) = parent1(p.heuristicOrder(i))
+        for (i <- pt + 1 until child.numVars)
+          child(p.heuristicOrder(i)) = parent2(p.heuristicOrder(i))
+      }
+    }
+
+
+    override def evaluate(ind : Individual[Bit], eaState : EAState[Bit]) : Fitness = {
+      val l = p.heuristicOrder.length
+      val idx1 = eaState.rnd.nextInt(l)
+      val idx2 = eaState.rnd.nextInt(l)
+      val t = p.heuristicOrder(idx1)
+      p.heuristicOrder(idx1) = p.heuristicOrder(idx2)
+      p.heuristicOrder(idx2) = t
+      val f = p.computeFitness(ind)
+      if(f < eaState.best.fitness && eaState.rnd.nextDouble() < 0.99) {
+        val t2 = p.heuristicOrder(idx1)
+        p.heuristicOrder(idx1) = p.heuristicOrder(idx2)
+        p.heuristicOrder(idx2) = t2
+      }
+      f
+    }
+
   }
 
   val result = ea.run()
