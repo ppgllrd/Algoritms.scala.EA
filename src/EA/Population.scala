@@ -87,7 +87,7 @@ case class NonRepeatedPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) ext
     for(i <- 0 until size)
       do
         ea.initialize(individuals(i), i, eaState)
-      while(contains(individuals(i), i-1))
+      while(contains(individuals(i), i))
     sort()
   }
 
