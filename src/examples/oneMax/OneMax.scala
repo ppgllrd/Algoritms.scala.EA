@@ -13,11 +13,11 @@ import EA._
 import EA.util.Logger
 
 
-case class OneMax(numVars : Int) extends Problem {
-  override def isOptimal(ind: Individual): Boolean =
+case class OneMax(numVars : Int) extends Problem[Bit] {
+  override def isOptimal(ind: Individual[Bit]): Boolean =
     ind.fitness == numVars
 
-  override def computeFitness(ind: Individual): Fitness =
+  override def computeFitness(ind: Individual[Bit]): Fitness =
     ind.chromosome.count(_==1)
 }
 
@@ -30,7 +30,7 @@ object OneMaxEA extends App {
   val numVars = 500 // number of variables
   val p = OneMax(numVars)
 
-  val ea = StandardSteadyStateTimedEA(seed = 0, logger = logger, problem = p, maxRunTime = 1000)
+  val ea = StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed = 0, logger = logger, problem = p, maxRunTime = 1000)
 
   val result = ea.run()
 

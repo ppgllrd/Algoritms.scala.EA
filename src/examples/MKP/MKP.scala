@@ -16,7 +16,6 @@ import EA.util.Logger
 // Assumes that b >= 0 so that x = 0 is a basic feasible solution.
 case class LinearRelaxation(c : Array[Double], A : Array[Array[Double]], b : Array[Double]) {
   private val numVars = c.length
-  private val numConstraints = A.length
 
   require(A.forall(_.length == numVars), "LinearRelaxation: number of columns in A must be equal to number of variables")
   require(A.length == b.length, "LinearRelaxation: number of constraints must be equal to length of b")
@@ -47,7 +46,7 @@ class MKProblem( val profits : Array[Double]
                 , val constraints : Array[Array[Double]]
                 , val capacities : Array[Double]
                 , val optimum : Fitness = 0
-                ) extends Problem {
+                ) extends Problem[Bit] {
 
   val numObjects : Int = profits.length
 
@@ -72,7 +71,7 @@ class MKProblem( val profits : Array[Double]
 
 
   // Evals objective function for an assignments of vars
-  def totalProfit(xs : Chromosome) : Fitness = {
+  def totalProfit(xs : Chromosome[Bit]) : Fitness = {
     // require(xs.length == numObjects, "MKProblem.evaluate: Number of variables must be the same as number of objects")
     var s = 0.0
     for(j <- 0 until numObjects)
@@ -81,7 +80,7 @@ class MKProblem( val profits : Array[Double]
   }
 
   // Checks if an assignment satisfies all constraints
-  def checkConstraints(xs : Chromosome) : Boolean = {
+  def checkConstraints(xs : Chromosome[Bit]) : Boolean = {
     for(i <- 0 until numConstraints) {
       var s = 0.0
       for(j <- 0 until numObjects)
@@ -97,7 +96,7 @@ class MKProblem( val profits : Array[Double]
   protected val zero : Byte = 0
   protected val one : Byte = 1
 
-  def repair(xs : Chromosome): Unit = {
+  def repair(xs : Chromosome[Bit]): Unit = {
     val sums = new Array[Double](numConstraints)
     for(i <- 0 until numConstraints)
       for(j <- 0 until numObjects)
@@ -151,7 +150,7 @@ class MKProblem( val profits : Array[Double]
 
   val numVars = numObjects
 
-  def computeFitness(ind : Individual) : Fitness = {
+  def computeFitness(ind : Individual[Bit]) : Fitness = {
     repair(ind.chromosome)
     /*
     if(!checkConstraints(xs))
@@ -160,7 +159,7 @@ class MKProblem( val profits : Array[Double]
     totalProfit(ind.chromosome)
   }
 
-  def isOptimal(ind : Individual) : Boolean =
+  def isOptimal(ind : Individual[Bit]) : Boolean =
     ind.fitness == optimum
 
   override def toString : String = {
@@ -273,8 +272,8 @@ object ChuBeasleyEA extends App {
   val p = ChuBeasley.fromFile(fileName)
   val logger = Logger() // Execution time due to Simplex is not considered
 
-  val ea = new StandardSteadyStateNonRepeatedPopTimedEA(seed = seed, logger = logger, problem = p, maxRunTime = maxTime) {
-    override def replace(ind : Individual, eaState : EAState) {
+  val ea = new StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed = seed, logger = logger, problem = p, maxRunTime = maxTime) {
+    override def replace(ind : Individual[Bit], eaState : EAState[Bit]) {
       Replacement.randomButBest(population.size/2, eaState.population, ind, eaState.rnd)
     }
   }

@@ -10,75 +10,79 @@ package EA
 
 import java.util.Random
 
-import EA.util.{Timer, Logger}
+import EA.util.Logger
 
-case class EAParams( popSize : Int = 100
-                    , crossProb : Probability = 0.9
-                    , mutProb : Probability
-                    , maxRunTime : Seconds = Double.MaxValue
-                    , maxIters : Int = Int.MaxValue
-                    ) {
+case class EAParams
+  ( popSize : Int = 100
+  , crossProb : Probability = 0.9
+  , mutProb : Probability
+  , maxRunTime : Seconds = Double.MaxValue
+  , maxIters : Int = Int.MaxValue
+  ) {
   override def toString =
     "EAParams(popSize=%d, crossProb=%.3f, mutProb=1/%.2f, maxRunTime=%.2f segs.)".format(popSize,crossProb,1.0/mutProb,maxRunTime)
 }
 
 
 // Current state of EA
-case class EAState( population : Population
-                   , best : Individual
-                   , var iter : Int
-                   , logger : Logger
-                   , rnd : Random
-                   , params : EAParams
-                   , problem : Problem
-                   )
+case class EAState[Gene]
+  ( population : Population[Gene]
+  , best : Individual[Gene]
+  , var iter : Int
+  , logger : Logger
+  , rnd : Random
+  , params : EAParams
+  , problem : Problem[Gene]
+  )
 
 
 // Information returned after running EA
-case class EAResult( best : Individual // best sol found
-                    , lastIter : Int // last iteration done
-                    , bestIter : Int // iteration where best sol was found
-                    , logger: Logger
-                    ) {
+case class EAResult[Gene]
+  ( best : Individual[Gene] // best solution found
+  , population: Population[Gene]
+  , lastIter : Int // last iteration done
+  , bestIter : Int // iteration where best sol was found
+  , logger: Logger
+  ) {
   override def toString =
     "EAResult(best=%s, lastIter=%d, bestIter=%d)".format(best, lastIter, bestIter)
 }
 
 
-abstract class EA(seed : Int, val params : EAParams, val problem : Problem) {
-  protected val population : Population
+abstract class EA[Gene](seed : Int, val params : EAParams, val problem : Problem[Gene]) {
+  protected val population : Population[Gene]
 
-  // should also assign new individual fitness
-  def initialize(ind : Individual, idx : Int, eaState : EAState)
+  // should also assign fitness to new individual
+  def initialize(ind : Individual[Gene], idx : Int, eaState : EAState[Gene])
 
-  def mutate(ind : Individual, eaState : EAState)
+  def mutate(ind : Individual[Gene], eaState : EAState[Gene])
 
-  def select(eaState : EAState) : Individual
+  def select(eaState : EAState[Gene]) : Individual[Gene]
 
-  def recombine(child : Individual, parent1 : Individual, parent2 : Individual, eaState : EAState)
+  def recombine(child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], eaState : EAState[Gene])
 
-  def replace(ind : Individual, eaState : EAState)
+  def replace(ind : Individual[Gene], eaState : EAState[Gene])
 
-  def endCondition(eaState: EAState) : Boolean
+  def endCondition(eaState: EAState[Gene]) : Boolean
 
-  def run() : EAResult
-
+  def run() : EAResult[Gene]
 }
 
 
-abstract class SteadyStateEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
-          extends EA(seed, params, problem) {
-  override def run() : EAResult = {
+abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
+          extends EA[Gene](seed, params, problem) {
 
+  override def run() : EAResult[Gene] = {
     val state =
-      EAState( population = population
-             , best = Individual(problem.numVars)
-             , iter = 0
-             , logger = logger
-             , rnd = new Random(seed)
-             , params = params
-             , problem = problem
-             )
+      EAState[Gene](
+          population = population
+        , best = new Individual[Gene](problem.numVars)
+        , iter = 0
+        , logger = logger
+        , rnd = new Random(seed)
+        , params = params
+        , problem = problem
+        )
 
     println("Seed=%d".format(seed))
     println(params)
@@ -86,7 +90,7 @@ abstract class SteadyStateEA(seed: Int, logger: Logger, params: EAParams, proble
     // initialize population
     population.initialize(state)
 
-    val ind = Individual(problem.numVars)
+    val ind = new Individual[Gene](problem.numVars)
 
     state.best.copyFrom(state.population.best())
 
@@ -118,6 +122,7 @@ abstract class SteadyStateEA(seed: Int, logger: Logger, params: EAParams, proble
       replace(ind, state)
     }
     EAResult( best = state.best
+            , population = state.population
             , lastIter = state.iter
             , bestIter = bestIter
             , logger = state.logger
@@ -126,77 +131,109 @@ abstract class SteadyStateEA(seed: Int, logger: Logger, params: EAParams, proble
 }
 
 
-class StandardParams(problem : Problem)
+trait StandardOperators[Gene] {
+  def select(eaState : EAState[Gene]) =
+    Selection.binaryTournament(eaState.population, eaState.rnd)
+
+  def recombine(child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], eaState : EAState[Gene]) =
+    Recombination.uniform(child, parent1, parent2, eaState.rnd)
+
+  def replace(ind : Individual[Gene], eaState : EAState[Gene]) {
+    Replacement.worst(eaState.population, ind)
+  }
+}
+
+abstract class StandardOperatorsSteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
+  extends SteadyStateEA[Gene](seed, logger, params, problem)
+  with StandardOperators[Gene] {
+  override val population = StandardPopulation[Gene](params.popSize, this)
+}
+
+
+abstract class StandardOperatorsSteadyStateNonRepeatedPopEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
+  extends SteadyStateEA[Gene](seed, logger, params, problem)
+  with StandardOperators[Gene] {
+  override val population = NonRepeatedPopulation(params.popSize, this)
+}
+
+
+class StandardParams[Gene](problem : Problem[Gene])
   extends EAParams( popSize = 100
                    , crossProb = 0.9
                    , mutProb = 1.0/problem.numVars
                    )
 
 
-abstract class StandardOperatorsSteadyStateEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
-  extends SteadyStateEA(seed, logger, params, problem) {
+trait TimedEA[Gene] {
+  val problem : Problem[Gene]
 
-  override val population : Population = StandardPopulation(params.popSize, this)
-
-  override def initialize(ind : Individual, idx : Int, eaState : EAState) {
-    Initialization.random(ind, eaState.rnd)
-    ind.fitness = problem.computeFitness(ind)
-  }
-
-  override def mutate(ind : Individual, eaState : EAState) {
-    Mutation.flipBit(ind, eaState.params.mutProb, eaState.rnd)
-  }
-
-  override def select(eaState : EAState) =
-    Selection.binaryTournament(eaState.population, eaState.rnd)
-
-  override def recombine(child : Individual, parent1 : Individual, parent2 : Individual, eaState : EAState) =
-    Recombination.uniform(child, parent1, parent2, eaState.rnd)
-
-  override def replace(ind : Individual, eaState : EAState) {
-    Replacement.worst(eaState.population, ind)
-  }
-
-}
-
-
-abstract class StandardOperatorsSteadyStateNonRepeatedPopEA(seed: Int, logger: Logger, params: EAParams, problem: Problem)
-          extends StandardOperatorsSteadyStateEA(seed, logger, params, problem) {
-  override val population = NonRepeatedPopulation(params.popSize, this)
-}
-
-
-trait TimedEA {
-  val problem : Problem
-
-  def endCondition(eaState: EAState) =
+  def endCondition(eaState: EAState[Gene]) =
     eaState.logger.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
 }
 
 
-case class StandardSteadyStateTimedEA(seed: Int, logger: Logger, override val problem: Problem, maxRunTime: Probability)
-  extends StandardOperatorsSteadyStateEA(seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
-  with TimedEA
+abstract class StandardSteadyStateTimedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxRunTime: Seconds)
+  extends StandardOperatorsSteadyStateEA[Gene](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
+  with TimedEA[Gene]
 
 
-case class StandardSteadyStateNonRepeatedPopTimedEA(seed: Int, logger: Logger, override val problem: Problem, maxRunTime: Probability)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA(seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
-  with TimedEA
+abstract class StandardSteadyStateNonRepeatedPopTimedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxRunTime: Seconds)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
+  with TimedEA[Gene]
 
 
-trait IteratedEA {
-  val problem : Problem
+trait IteratedEA[Gene] {
+  val problem : Problem[Gene]
 
-  def endCondition(eaState: EAState) =
+  def endCondition(eaState: EAState[Gene]) =
     eaState.iter >= eaState.params.maxIters || problem.isOptimal(eaState.best)
 }
 
 
-case class StandardSteadyStateIteratedEA(seed: Int, logger: Logger, override val problem: Problem, maxIters: Int)
-  extends StandardOperatorsSteadyStateEA(seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
-  with IteratedEA
+abstract class StandardSteadyStateIteratedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxIters: Int)
+  extends StandardOperatorsSteadyStateEA[Gene](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
+  with IteratedEA[Gene]
 
 
-case class StandardSteadyStateNonRepeatedPopIteratedEA(seed: Int, logger: Logger, override val problem: Problem, maxIters: Int)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA(seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
-  with IteratedEA
+abstract class StandardSteadyStateNonRepeatedPopIteratedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxIters: Int)
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
+  with IteratedEA[Gene]
+
+
+trait BinaryRandomInitialization {
+  def initialize(ind : Individual[Bit], idx : Int, eaState : EAState[Bit]) {
+    Initialization.random(ind, eaState.rnd)
+    ind.fitness = eaState.problem.computeFitness(ind)
+  }
+}
+
+
+trait BinaryBitFlipMutation {
+  def mutate(ind: Individual[Bit], eaState: EAState[Bit]) {
+    BinaryMutation.flipBit(ind, eaState.params.mutProb, eaState.rnd)
+  }
+}
+
+
+case class StandardSteadyStateIteratedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxIters: Int)
+  extends StandardSteadyStateIteratedEA[Bit](seed, logger, problem, maxIters)
+  with BinaryRandomInitialization
+  with BinaryBitFlipMutation
+
+
+case class StandardSteadyStateNonRepeatedPopIteratedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxIters: Int)
+  extends StandardSteadyStateNonRepeatedPopIteratedEA[Bit](seed, logger, problem, maxIters)
+  with BinaryRandomInitialization
+  with BinaryBitFlipMutation
+
+
+case class StandardSteadyStateTimedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxRunTime: Seconds)
+  extends StandardSteadyStateTimedEA[Bit](seed, logger, problem, maxRunTime)
+  with BinaryRandomInitialization
+  with BinaryBitFlipMutation
+
+
+case class StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxRunTime: Seconds)
+  extends StandardSteadyStateNonRepeatedPopTimedEA[Bit](seed, logger, problem, maxRunTime)
+  with BinaryRandomInitialization
+  with BinaryBitFlipMutation

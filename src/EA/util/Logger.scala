@@ -58,18 +58,18 @@ case class Logger( timer : Timer = new Timer()
 
     val maxTime1 = if(maxTime<0) slots.last.time + step else maxTime
     val last = slots.last
-    println(("LAST: %.4f").format(last.fitness))
+    println("LAST: %.4f".format(last.fitness))
 
     for(mt <- 0 to maxTime1.toInt by step) {
       val xs = slots.takeWhile(_.time <= mt)
       if(xs.nonEmpty) {
         val last = xs.last
-        println(("LAST %-6d: %.4f").format(mt, last.fitness))
+        println("LAST %-6d: %.4f".format(mt, last.fitness))
       }
     }
     System.out.print("LOG: ")
     for(s <- slots)
       System.out.print(logFormat.format(s.iter, s.fitness, s.time))
-    System.out.println
+    System.out.println()
   }
 }

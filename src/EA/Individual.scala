@@ -8,24 +8,24 @@
 
 package EA
 
-case class Individual(numVars : Int) {
-  val chromosome : Chromosome = new Array[Gen](numVars)
+case class Individual[Gene : Manifest](numVars : Int) {
+  val chromosome : Chromosome[Gene] = new Array[Gene](numVars)
   var fitness : Fitness = 0
 
-  def apply(idx : Int) : Gen = chromosome(idx)
+  def apply(idx : Int) : Gene = chromosome(idx)
 
-  def update(idx : Int, gen : Gen): Unit = {
+  def update(idx : Int, gen : Gene): Unit = {
     chromosome(idx) = gen
   }
 
-  def copyFrom(that : Individual): Unit = {
+  def copyFrom(that : Individual[Gene]): Unit = {
     Array.copy(that.chromosome, 0, this.chromosome, 0, numVars)
     this.fitness = that.fitness
   }
 
   override def equals(that : Any): Boolean = that match {
-    case ind : Individual => this.chromosome.sameElements(ind.chromosome)
-    case _                => false
+    case ind : Individual[Gene] => this.chromosome.sameElements(ind.chromosome)
+    case _                      => false
   }
 
   override def toString : String = {
