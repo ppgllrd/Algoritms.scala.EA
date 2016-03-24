@@ -202,7 +202,7 @@ abstract class StandardSteadyStateNonRepeatedPopIteratedEA[Gene : Manifest](seed
 
 trait BinaryRandomInitialization {
   def initialize(ind : Individual[Bit], idx : Int, eaState : EAState[Bit]) {
-    Initialization.random(ind, eaState.rnd)
+    BinaryInitialization.random(ind, eaState.rnd)
     ind.fitness = eaState.problem.computeFitness(ind)
   }
 }

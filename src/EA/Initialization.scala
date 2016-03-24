@@ -15,7 +15,9 @@ object Initialization {
     for(i <- 0 until ind.numVars)
       ind(i) = rndGen()
   }
+}
 
+object BinaryInitialization {
   def random(ind : Individual[Bit], rnd : Random): Unit = {
     for(i <- 0 until ind.numVars)
       ind(i) = rnd.nextInt(2).toByte
