@@ -9,8 +9,6 @@
 package object EA {
   type Bit = Byte // Either 0 or 1
 
-  type Chromosome[Gen] = Array[Gen]
-
   type Fitness = Double
 
   type Seconds = Double

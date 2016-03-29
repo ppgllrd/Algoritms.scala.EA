@@ -281,12 +281,12 @@ object ChuBeasleyEA extends App {
       if(eaState.rnd.nextDouble() < 0.5)
         Recombination.uniform(child, parent1, parent2, eaState.rnd)
       else {
-        val pt = eaState.rnd.nextInt(child.numVars)
+        val pt = eaState.rnd.nextInt(child.chromosome.size)
 
         for (i <- 0 until pt)
-          child(p.heuristicOrder(i)) = parent1(p.heuristicOrder(i))
-        for (i <- pt + 1 until child.numVars)
-          child(p.heuristicOrder(i)) = parent2(p.heuristicOrder(i))
+          child.chromosome(p.heuristicOrder(i)) = parent1.chromosome(p.heuristicOrder(i))
+        for (i <- pt + 1 until child.chromosome.size)
+          child.chromosome(p.heuristicOrder(i)) = parent2.chromosome(p.heuristicOrder(i))
       }
     }
 

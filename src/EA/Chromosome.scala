@@ -1,6 +1,6 @@
 /******************************************************************************
   *
-  * Individuals
+  * A Chromosome is an indexed & mutable sequence of genes
   *
   * @ Pepe Gallardo, 2016
   *
@@ -8,11 +8,4 @@
 
 package EA
 
-trait Individual[Gene] {
-
-  var fitness : Fitness = 0
-  val chromosome : Chromosome[Gene]
-
-  def copyFrom(that : Individual[Gene])
-}
-
+trait Chromosome[Gene] extends collection.mutable.IndexedSeq[Gene]

@@ -69,13 +69,13 @@ trait Population[Gene] {
 
 case class StandardPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) extends Population[Gene] {
   protected val individuals: Array[Individual[Gene]] =
-    Array.fill[Individual[Gene]](size)(new Individual[Gene](ea.problem.numVars))
+    Array.fill[Individual[Gene]](size)(new ArrayIndividual[Gene](ea.problem.numVars))
 }
 
 // Repeated individuals are not allowed
 case class NonRepeatedPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) extends Population[Gene] {
   protected val individuals: Array[Individual[Gene]] =
-    Array.fill[Individual[Gene]](size)(new Individual[Gene](ea.problem.numVars))
+    Array.fill[Individual[Gene]](size)(new ArrayIndividual[Gene](ea.problem.numVars))
   private def contains(ind : Individual[Gene], maxIdx : Int) : Boolean = {
     for(i <- 0 until maxIdx)
       if(ind==individuals(i))

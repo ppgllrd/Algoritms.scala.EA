@@ -80,7 +80,7 @@ abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params:
     val state =
       EAState[Gene](
           population = population
-        , best = new Individual[Gene](problem.numVars)
+        , best = new ArrayIndividual[Gene](problem.numVars)
         , iter = 0
         , logger = logger
         , rnd = new Random(seed)
@@ -94,7 +94,7 @@ abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params:
     // initialize population
     population.initialize(state)
 
-    val ind = new Individual[Gene](problem.numVars)
+    val ind = new ArrayIndividual[Gene](problem.numVars)
 
     state.best.copyFrom(state.population.best())
 
