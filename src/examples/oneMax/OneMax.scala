@@ -12,12 +12,18 @@ import java.util.Locale
 import EA._
 import EA.util.Logger
 
+object OneMax {
+  type Gene = Bit
+  type Fitness = Int
+}
 
-case class OneMax(numVars : Int) extends Problem[Bit] {
-  override def isOptimal(ind: Individual[Bit]): Boolean =
+import OneMax._
+
+case class OneMax(numVars : Int) extends Problem[Gene, Fitness] {
+  override def isOptimal(ind: Individual[Gene, Fitness]): Boolean =
     ind.fitness == numVars
 
-  override def computeFitness(ind: Individual[Bit]): Fitness =
+  override def computeFitness(ind: Individual[Gene, Fitness]): Fitness =
     ind.chromosome.count(_==1)
 }
 
@@ -26,11 +32,14 @@ object OneMaxEA extends App {
   // Use English formats
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-  val logger = Logger()
   val numVars = 500 // number of variables
-  val p = OneMax(numVars)
 
-  val ea = StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed = 0, logger = logger, problem = p, maxRunTime = 1000)
+  val ea =
+    StandardSteadyStateNonRepeatedPopTimedBinaryEA[Fitness]( seed = 0
+                                                           , logger = Logger[Fitness]()
+                                                           , problem = OneMax(numVars)
+                                                           , maxRunTime = 1000
+                                                           )
 
   val result = ea.run()
 

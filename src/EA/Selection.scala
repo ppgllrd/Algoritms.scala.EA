@@ -11,7 +11,9 @@ package EA
 import java.util.Random
 
 object Selection {
-  def binaryTournament[Gene](pop : Population[Gene], rnd : Random): Individual[Gene] = {
+  def binaryTournament[Gene, Fitness](pop : Population[Gene, Fitness], rnd : Random)
+                                     (implicit ord : Ordering[Fitness]) : Individual[Gene, Fitness] = {
+    import ord._
     val idx1 = rnd.nextInt(pop.size)
     var idx2 = 0
     do {
@@ -26,6 +28,6 @@ object Selection {
       ind2
   }
 
-  def random[Gene](pop : Population[Gene], rnd : Random) : Individual[Gene] =
+  def random[Gene, Fitness](pop : Population[Gene, Fitness], rnd : Random) : Individual[Gene, Fitness] =
     pop(rnd.nextInt(pop.size))
 }

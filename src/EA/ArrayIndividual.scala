@@ -5,23 +5,31 @@
   * @ Pepe Gallardo, 2016
   *
   *****************************************************************************/
+
 package EA
 
-case class ArrayIndividual[Gene : Manifest](numVars : Int) extends Individual[Gene] {
-  val chromosome : Chromosome[Gene] = new ArrayChromosome[Gene](numVars)
+case class ArrayIndividual[Gene : Manifest, Fitness](numVars : Int) extends Individual[Gene, Fitness] {
+  val chromosome = new ArrayChromosome[Gene](numVars)
 
-  def copyFrom(that : Individual[Gene]): Unit = {
-    Array.copy(that.chromosome, 0, this.chromosome, 0, numVars)
-    this.fitness = that.fitness
-  }
+  // toDo avoid dynamic casting
+  def copyFrom(that : Individual[Gene, Fitness]): Unit = that match {
+    case that : ArrayIndividual[Gene, Fitness] =>
+      this.chromosome.copyFrom(that.chromosome)
+      this.fitness = that.fitness
+    case _ =>
+      sys.error("ArrayIndividual.copyFrom: ArrayIndividual expected")
+    }
 
   override def equals(that : Any): Boolean = that match {
-    case ind : Individual[Gene] => this.chromosome.sameElements(ind.chromosome)
-    case _                      => false
+    case ind : ArrayIndividual[Gene,Fitness] =>
+      this.chromosome.sameGenes(ind.chromosome)
+    case _                                   =>
+      false
   }
 
   override def toString : String = {
-    val sb = new StringBuilder("ArrayIndividual(%.5f, ".format(fitness))
+    val fitnessFormat = Fitness.fitness2Format(fitness)
+    val sb = new StringBuilder(("ArrayIndividual("+fitnessFormat+", ").format(fitness))
     for(g <- chromosome)
       sb.append(g)
     sb.append(")")

@@ -9,7 +9,6 @@
 package EA
 
 import java.util.Random
-
 import EA.util.Logger
 
 case class EAParams
@@ -19,68 +18,75 @@ case class EAParams
   , maxRunTime : Seconds = Double.MaxValue
   , maxIters : Int = Int.MaxValue
   ) {
-  override def toString =
-    "EAParams(popSize=%d, crossProb=%.3f, mutProb=1/%.2f, maxRunTime=%.2f segs.)".format(popSize,crossProb,1.0/mutProb,maxRunTime)
+  override def toString = {
+    val fmt = "EAParams(popSize=%d, crossProb=%.3f, mutProb=1/%.2f, maxRunTime=%.2f segs., maxIters=%d)"
+    fmt.format(popSize, crossProb, 1.0 / mutProb, maxRunTime, maxIters)
+  }
 }
 
 
 // Current state of EA
-case class EAState[Gene]
-  ( population : Population[Gene]
-  , best : Individual[Gene]
+case class EAState[Gene, Fitness]
+  ( population : Population[Gene, Fitness]
+  , best : Individual[Gene, Fitness]
   , var iter : Int
-  , logger : Logger
+  , logger : Logger[Fitness]
   , rnd : Random
   , params : EAParams
-  , problem : Problem[Gene]
+  , problem : Problem[Gene, Fitness]
   )
 
 
 // Information returned after running EA
-case class EAResult[Gene]
-  ( best : Individual[Gene] // best solution found
-  , population: Population[Gene]
-  , lastIter : Int // last iteration done
+case class EAResult[Gene, Fitness]
+  ( best : Individual[Gene, Fitness] // best solution found
+  , population: Population[Gene, Fitness] // state of population at end of execution
+  , lastIter : Int // last iteration that was done
   , bestIter : Int // iteration where best sol was found
-  , logger: Logger
+  , logger: Logger[Fitness] // log of EA execution
   ) {
   override def toString =
     "EAResult(best=%s, lastIter=%d, bestIter=%d)".format(best, lastIter, bestIter)
 }
 
 
-abstract class EA[Gene](seed : Int, val params : EAParams, val problem : Problem[Gene]) {
-  protected val population : Population[Gene]
+abstract class EA[Gene, Fitness](seed : Int, val params : EAParams, val problem : Problem[Gene, Fitness]) {
+
+  protected val population : Population[Gene, Fitness]
 
   // should also assign fitness to new individual
-  def initialize(ind : Individual[Gene], idx : Int, eaState : EAState[Gene])
+  def initialize(ind : Individual[Gene, Fitness], idx : Int, eaState : EAState[Gene, Fitness])
 
-  def evaluate(ind : Individual[Gene], eaState : EAState[Gene]) : Fitness = {
+  def evaluate(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]) : Fitness = {
     problem.computeFitness(ind)
   }
 
-  def mutate(ind : Individual[Gene], eaState : EAState[Gene])
+  def mutate(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness])
 
-  def select(eaState : EAState[Gene]) : Individual[Gene]
+  def select(eaState : EAState[Gene, Fitness])(implicit ord : Ordering[Fitness]) : Individual[Gene, Fitness]
 
-  def recombine(child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], eaState : EAState[Gene])
+  def recombine(child : Individual[Gene, Fitness], parent1 : Individual[Gene, Fitness], parent2 : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness])
 
-  def replace(ind : Individual[Gene], eaState : EAState[Gene])
+  def replace(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness])
 
-  def endCondition(eaState: EAState[Gene]) : Boolean
+  def endCondition(eaState: EAState[Gene, Fitness]) : Boolean
 
-  def run() : EAResult[Gene]
+  def run() : EAResult[Gene, Fitness]
 }
 
 
-abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
-          extends EA[Gene](seed, params, problem) {
+abstract class SteadyStateEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], params: EAParams, problem: Problem[Gene, Fitness])
+                                                       (implicit ord : Ordering[Fitness])
+          extends EA[Gene, Fitness](seed, params, problem) {
 
-  override def run() : EAResult[Gene] = {
+  import ord._
+
+  override def run() : EAResult[Gene, Fitness] = {
+
     val state =
-      EAState[Gene](
+      EAState[Gene, Fitness](
           population = population
-        , best = new ArrayIndividual[Gene](problem.numVars)
+        , best = new ArrayIndividual[Gene, Fitness](problem.numVars)
         , iter = 0
         , logger = logger
         , rnd = new Random(seed)
@@ -94,7 +100,7 @@ abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params:
     // initialize population
     population.initialize(state)
 
-    val ind = new ArrayIndividual[Gene](problem.numVars)
+    val ind = new ArrayIndividual[Gene, Fitness](problem.numVars)
 
     state.best.copyFrom(state.population.best())
 
@@ -135,109 +141,120 @@ abstract class SteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params:
 }
 
 
-trait StandardOperators[Gene] {
-  def select(eaState : EAState[Gene]) =
+trait StandardOperators[Gene, Fitness] {
+  def select(eaState : EAState[Gene, Fitness])(implicit ord : Ordering[Fitness]) =
     Selection.binaryTournament(eaState.population, eaState.rnd)
 
-  def recombine(child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], eaState : EAState[Gene]) =
-    Recombination.uniform(child, parent1, parent2, eaState.rnd)
+  def recombine(child : Individual[Gene, Fitness], parent1 : Individual[Gene, Fitness], parent2 : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]) =
+    Recombination.uniform(child.chromosome, parent1.chromosome, parent2.chromosome, eaState.rnd)
 
-  def replace(ind : Individual[Gene], eaState : EAState[Gene]) {
+  def replace(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]) {
     Replacement.worst(eaState.population, ind)
   }
 }
 
-abstract class StandardOperatorsSteadyStateEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
-  extends SteadyStateEA[Gene](seed, logger, params, problem)
-  with StandardOperators[Gene] {
-  override val population = StandardPopulation[Gene](params.popSize, this)
+abstract class StandardOperatorsSteadyStateEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], params: EAParams, problem: Problem[Gene, Fitness])
+                                                                        (implicit ord : Ordering[Fitness])
+  extends SteadyStateEA[Gene, Fitness](seed, logger, params, problem)
+  with StandardOperators[Gene, Fitness] {
+  override val population = StandardPopulation[Gene, Fitness](params.popSize, this)
 }
 
 
-abstract class StandardOperatorsSteadyStateNonRepeatedPopEA[Gene : Manifest](seed: Int, logger: Logger, params: EAParams, problem: Problem[Gene])
-  extends SteadyStateEA[Gene](seed, logger, params, problem)
-  with StandardOperators[Gene] {
+abstract class StandardOperatorsSteadyStateNonRepeatedPopEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], params: EAParams, problem: Problem[Gene, Fitness])
+                                                                                      (implicit ord : Ordering[Fitness])
+  extends SteadyStateEA[Gene, Fitness](seed, logger, params, problem)
+  with StandardOperators[Gene, Fitness] {
   override val population = NonRepeatedPopulation(params.popSize, this)
 }
 
 
-class StandardParams[Gene](problem : Problem[Gene])
+class StandardParams[Gene, Fitness](problem : Problem[Gene, Fitness])
   extends EAParams( popSize = 100
                    , crossProb = 0.9
                    , mutProb = 1.0/problem.numVars
                    )
 
 
-trait TimedEA[Gene] {
-  val problem : Problem[Gene]
+trait TimedEA[Gene, Fitness] {
+  val problem : Problem[Gene, Fitness]
 
-  def endCondition(eaState: EAState[Gene]) =
+  def endCondition(eaState: EAState[Gene, Fitness]) =
     eaState.logger.timer.elapsedTime() > eaState.params.maxRunTime || problem.isOptimal(eaState.best)
 }
 
 
-abstract class StandardSteadyStateTimedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxRunTime: Seconds)
-  extends StandardOperatorsSteadyStateEA[Gene](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
-  with TimedEA[Gene]
+abstract class StandardSteadyStateTimedEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Gene, Fitness], maxRunTime: Seconds)
+                                                                    (implicit ord : Ordering[Fitness])
+  extends StandardOperatorsSteadyStateEA[Gene, Fitness](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
+  with TimedEA[Gene, Fitness]
 
 
-abstract class StandardSteadyStateNonRepeatedPopTimedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxRunTime: Seconds)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
-  with TimedEA[Gene]
+abstract class StandardSteadyStateNonRepeatedPopTimedEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Gene, Fitness], maxRunTime: Seconds)
+                                                                                  (implicit ord : Ordering[Fitness])
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene, Fitness](seed, logger, new StandardParams(problem).copy(maxRunTime = maxRunTime), problem)
+  with TimedEA[Gene, Fitness]
 
 
-trait IteratedEA[Gene] {
-  val problem : Problem[Gene]
+trait IteratedEA[Gene, Fitness] {
+  val problem : Problem[Gene, Fitness]
 
-  def endCondition(eaState: EAState[Gene]) =
+  def endCondition(eaState: EAState[Gene, Fitness]) =
     eaState.iter >= eaState.params.maxIters || problem.isOptimal(eaState.best)
 }
 
 
-abstract class StandardSteadyStateIteratedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxIters: Int)
-  extends StandardOperatorsSteadyStateEA[Gene](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
-  with IteratedEA[Gene]
+abstract class StandardSteadyStateIteratedEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Gene, Fitness], maxIters: Int)
+                                                                       (implicit ord : Ordering[Fitness])
+  extends StandardOperatorsSteadyStateEA[Gene, Fitness](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
+  with IteratedEA[Gene, Fitness]
 
 
-abstract class StandardSteadyStateNonRepeatedPopIteratedEA[Gene : Manifest](seed: Int, logger: Logger, override val problem: Problem[Gene], maxIters: Int)
-  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
-  with IteratedEA[Gene]
+abstract class StandardSteadyStateNonRepeatedPopIteratedEA[Gene : Manifest, Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Gene, Fitness], maxIters: Int)
+                                                                                     (implicit ord : Ordering[Fitness])
+  extends StandardOperatorsSteadyStateNonRepeatedPopEA[Gene, Fitness](seed, logger, new StandardParams(problem).copy(maxIters = maxIters), problem)
+  with IteratedEA[Gene, Fitness]
 
 
-trait BinaryRandomInitialization {
-  def initialize(ind : Individual[Bit], idx : Int, eaState : EAState[Bit]) {
-    BinaryInitialization.random(ind, eaState.rnd)
+trait BinaryRandomInitialization[Fitness] {
+  def initialize(ind : Individual[Bit, Fitness], idx : Int, eaState : EAState[Bit, Fitness]) {
+    BinaryInitialization.random(ind.chromosome, eaState.rnd)
     ind.fitness = eaState.problem.computeFitness(ind)
   }
 }
 
 
-trait BinaryBitFlipMutation {
-  def mutate(ind: Individual[Bit], eaState: EAState[Bit]) {
-    BinaryMutation.flipBit(ind, eaState.params.mutProb, eaState.rnd)
+trait BinaryBitFlipMutation[Fitness] {
+  def mutate(ind: Individual[Bit, Fitness], eaState: EAState[Bit, Fitness]) {
+    BinaryMutation.flipBit(ind.chromosome, eaState.params.mutProb, eaState.rnd)
   }
 }
 
 
-case class StandardSteadyStateIteratedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxIters: Int)
-  extends StandardSteadyStateIteratedEA[Bit](seed, logger, problem, maxIters)
-  with BinaryRandomInitialization
-  with BinaryBitFlipMutation
+
+case class StandardSteadyStateIteratedBinaryEA[Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Bit, Fitness], maxIters: Int)
+                                                       (implicit ord : Ordering[Fitness])
+  extends StandardSteadyStateIteratedEA[Bit, Fitness](seed, logger, problem, maxIters)
+  with BinaryRandomInitialization[Fitness]
+  with BinaryBitFlipMutation[Fitness]
 
 
-case class StandardSteadyStateNonRepeatedPopIteratedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxIters: Int)
-  extends StandardSteadyStateNonRepeatedPopIteratedEA[Bit](seed, logger, problem, maxIters)
-  with BinaryRandomInitialization
-  with BinaryBitFlipMutation
+case class StandardSteadyStateNonRepeatedPopIteratedBinaryEA[Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Bit, Fitness], maxIters: Int)
+                                                                     (implicit ord : Ordering[Fitness])
+  extends StandardSteadyStateNonRepeatedPopIteratedEA[Bit, Fitness](seed, logger, problem, maxIters)
+  with BinaryRandomInitialization[Fitness]
+  with BinaryBitFlipMutation[Fitness]
 
 
-case class StandardSteadyStateTimedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxRunTime: Seconds)
-  extends StandardSteadyStateTimedEA[Bit](seed, logger, problem, maxRunTime)
-  with BinaryRandomInitialization
-  with BinaryBitFlipMutation
+case class StandardSteadyStateTimedBinaryEA[Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Bit, Fitness], maxRunTime: Seconds)
+                                                    (implicit ord : Ordering[Fitness])
+  extends StandardSteadyStateTimedEA[Bit, Fitness](seed, logger, problem, maxRunTime)
+  with BinaryRandomInitialization[Fitness]
+  with BinaryBitFlipMutation[Fitness]
 
 
-case class StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed: Int, logger: Logger, override val problem: Problem[Bit], maxRunTime: Seconds)
-  extends StandardSteadyStateNonRepeatedPopTimedEA[Bit](seed, logger, problem, maxRunTime)
-  with BinaryRandomInitialization
-  with BinaryBitFlipMutation
+case class StandardSteadyStateNonRepeatedPopTimedBinaryEA[Fitness](seed: Int, logger: Logger[Fitness], override val problem: Problem[Bit, Fitness], maxRunTime: Seconds)
+                                                                  (implicit ord : Ordering[Fitness])
+  extends StandardSteadyStateNonRepeatedPopTimedEA[Bit, Fitness](seed, logger, problem, maxRunTime)
+  with BinaryRandomInitialization[Fitness]
+  with BinaryBitFlipMutation[Fitness]

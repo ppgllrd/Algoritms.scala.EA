@@ -10,35 +10,39 @@
 package EA
 
 
-trait Population[Gene] {
+trait Population[Gene, Fitness] {
+
+  implicit protected val ord : Ordering[Fitness]
+
   val size : Int // number of individuals
 
-  protected val ea : EA[Gene] // access to EA where this population is used
+  protected val ea : EA[Gene, Fitness] // access to EA where this population is used
 
-  protected val individuals : Array[Individual[Gene]]
+  protected val individuals : Array[Individual[Gene, Fitness]]
 
-  def apply(idx : Int) : Individual[Gene] =
+  def apply(idx : Int) : Individual[Gene, Fitness] =
     individuals(idx)
 
   val worstIdx : Int = 0
-  def worst() : Individual[Gene] = individuals(worstIdx)
+  def worst() : Individual[Gene, Fitness] = individuals(worstIdx)
 
   val bestIdx : Int = size-1
-  def best() : Individual[Gene] = individuals(bestIdx)
+  def best() : Individual[Gene, Fitness] = individuals(bestIdx)
 
   def sort(): Unit = {
     // sorted in ascending order wrt fitness
     scala.util.Sorting.quickSort(individuals)(Ordering by (_.fitness))
   }
 
-  def initialize(eaState : EAState[Gene]) {
+  def initialize(eaState : EAState[Gene, Fitness]) {
     for (i <- 0 until size)
       ea.initialize(individuals(i), i, eaState)
     sort()
   }
 
   // replace an individual and keep resulting population sorted
-  def replace(idx : Int, ind : Individual[Gene]): Unit = {
+  def replace(idx : Int, ind : Individual[Gene, Fitness]): Unit = {
+    import ord._
     val toReplace = individuals(idx)
     var i = idx
 
@@ -60,6 +64,7 @@ trait Population[Gene] {
   }
 
   private def checkInOrder() {
+    import ord._
     for(i <- 0 until size-1)
       if(individuals(i).fitness > individuals(i+1).fitness)
         sys.error("checkInOrder: failed. Individuals are not in order")
@@ -67,23 +72,27 @@ trait Population[Gene] {
 }
 
 
-case class StandardPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) extends Population[Gene] {
-  protected val individuals: Array[Individual[Gene]] =
-    Array.fill[Individual[Gene]](size)(new ArrayIndividual[Gene](ea.problem.numVars))
+case class StandardPopulation[Gene : Manifest, Fitness](size : Int, ea : EA[Gene, Fitness])(implicit val ord : Ordering[Fitness])
+  extends Population[Gene, Fitness] {
+  protected val individuals =
+    Array.fill[Individual[Gene, Fitness]](size)(new ArrayIndividual[Gene, Fitness](ea.problem.numVars))
 }
 
+
 // Repeated individuals are not allowed
-case class NonRepeatedPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) extends Population[Gene] {
-  protected val individuals: Array[Individual[Gene]] =
-    Array.fill[Individual[Gene]](size)(new ArrayIndividual[Gene](ea.problem.numVars))
-  private def contains(ind : Individual[Gene], maxIdx : Int) : Boolean = {
+case class NonRepeatedPopulation[Gene : Manifest, Fitness](size : Int, ea : EA[Gene, Fitness])(implicit val ord : Ordering[Fitness])
+  extends Population[Gene, Fitness] {
+  protected val individuals =
+    Array.fill[Individual[Gene, Fitness]](size)(new ArrayIndividual[Gene, Fitness](ea.problem.numVars))
+
+  private def contains(ind : Individual[Gene, Fitness], maxIdx : Int) : Boolean = {
     for(i <- 0 until maxIdx)
       if(ind==individuals(i))
         return true
     false
   }
 
-  override def initialize(eaState : EAState[Gene]) {
+  override def initialize(eaState : EAState[Gene, Fitness]) {
     for(i <- 0 until size)
       do
         ea.initialize(individuals(i), i, eaState)
@@ -92,7 +101,7 @@ case class NonRepeatedPopulation[Gene : Manifest](size : Int, ea : EA[Gene]) ext
   }
 
   // replace an individual and keep resulting population sorted
-  override def replace(idx : Int, ind : Individual[Gene]): Unit = {
+  override def replace(idx : Int, ind : Individual[Gene, Fitness]): Unit = {
     if(!contains(ind, size))
       super.replace(idx, ind)
   }

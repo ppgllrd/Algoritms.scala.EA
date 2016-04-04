@@ -11,23 +11,23 @@ package EA
 import java.util.Random
 
 object Replacement {
-  def worst[Gene](pop : Population[Gene], ind : Individual[Gene]): Unit = {
+  def worst[Gene, Fitness](pop : Population[Gene, Fitness], ind : Individual[Gene, Fitness]): Unit = {
     pop.replace(pop.worstIdx, ind)
   }
 
-  def random[Gene](pop : Population[Gene], ind : Individual[Gene], rnd : Random): Unit = {
+  def random[Gene, Fitness](pop : Population[Gene, Fitness], ind : Individual[Gene, Fitness], rnd : Random): Unit = {
     pop.replace(rnd.nextInt(pop.size), ind)
   }
 
-  def randomButBest[Gene](pop : Population[Gene], ind : Individual[Gene], rnd : Random): Unit = {
+  def randomButBest[Gene, Fitness](pop : Population[Gene, Fitness], ind : Individual[Gene, Fitness], rnd : Random): Unit = {
     pop.replace(rnd.nextInt(pop.size-1), ind)
   }
 
-  def randomButBest[Gene](n : Int, pop : Population[Gene], ind : Individual[Gene], rnd : Random): Unit = {
+  def randomButBest[Gene, Fitness](n : Int, pop : Population[Gene, Fitness], ind : Individual[Gene, Fitness], rnd : Random): Unit = {
     pop.replace(rnd.nextInt(pop.size-n), ind)
   }
 
-  def best[Gene](pop : Population[Gene], ind : Individual[Gene]): Unit = {
+  def best[Gene, Fitness](pop : Population[Gene, Fitness], ind : Individual[Gene, Fitness]): Unit = {
     pop.replace(pop.bestIdx, ind)
   }
 }

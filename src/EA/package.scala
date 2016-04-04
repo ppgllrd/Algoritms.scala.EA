@@ -7,9 +7,7 @@
  *****************************************************************************/
 
 package object EA {
-  type Bit = Byte // Either 0 or 1
-
-  type Fitness = Double
+  type Bit = EA.Bits.Bit
 
   type Seconds = Double
 

@@ -12,16 +12,17 @@ import EA._
 
 import scala.collection.mutable.ArrayBuffer
 
-case class Logger( timer : Timer = new Timer()
-                  , echo : Boolean = true
-                  , format : String = "%10d\t%10.2f\t%10.2f"
-                  , logFormat : String = "%d %.4f %.2f  ") {
+case class Logger[Fitness]( timer : Timer = new Timer()
+                           , echo : Boolean = true
+                           ) {
+
+  import EA.Fitness.fitness2Format
 
   class Slot( val fitness : Fitness
              , val iter : Int
              , val time : Seconds
              ) {
-    override def toString = format.format(iter, fitness, time)
+    override def toString = ("%10d\t"+fitness2Format(fitness)+"\t%10.2f").format(iter, fitness, time)
   }
 
   class SlotWithFormat( fitness : Fitness
@@ -58,15 +59,19 @@ case class Logger( timer : Timer = new Timer()
 
     val maxTime1 = if(maxTime<0) slots.last.time + step else maxTime
     val last = slots.last
-    println("LAST: %.4f".format(last.fitness))
+
+
+    println(("LAST: "+fitness2Format(last.fitness)).format(last.fitness))
 
     for(mt <- 0 to maxTime1.toInt by step) {
       val xs = slots.takeWhile(_.time <= mt)
       if(xs.nonEmpty) {
         val last = xs.last
-        println("LAST %-6d: %.4f".format(mt, last.fitness))
+        println(("LAST %-6d: "+fitness2Format(last.fitness)).format(mt, last.fitness))
       }
     }
+
+    val logFormat = "%d "+fitness2Format(last.fitness)+" %.2f  "
     System.out.print("LOG: ")
     for(s <- slots)
       System.out.print(logFormat.format(s.iter, s.fitness, s.time))

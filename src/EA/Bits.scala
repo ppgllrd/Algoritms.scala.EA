@@ -1,6 +1,6 @@
 /******************************************************************************
   *
-  * Individuals
+  * Bits, represented as bytes (value is either 0 or 1)
   *
   * @ Pepe Gallardo, 2016
   *
@@ -8,11 +8,12 @@
 
 package EA
 
-trait Individual[Gene, Fitness] {
+object Bits {
+  type Bit = Byte // Either 0 or 1
 
-  var fitness : Fitness = _
-  val chromosome : Chromosome[Gene]
+  def flip(b : Bit) : Bit = (1-b).toByte
 
-  def copyFrom(that : Individual[Gene, Fitness])
+  val zero : Bit = 0.toByte
+
+  val one : Bit = 1.toByte
 }
-

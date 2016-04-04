@@ -42,11 +42,61 @@ case class LinearRelaxation(c : Array[Double], A : Array[Array[Double]], b : Arr
   }
 }
 
+
+object Types {
+  type Gene = EA.Bit
+  type Fitness = Double
+}
+
+import Types._
+
+
+object MKProblem {
+  def apply(values : Array[Double], constraints : Array[Array[Double]],  weights : Array[Double], optimum : Fitness = 0) =
+    new MKProblem(values, constraints, weights, optimum)
+
+  // Reads a problem from a text file
+  def fromFile(fileName : String) : MKProblem = {
+    import java.io.File
+    import java.util.Scanner
+
+    val file = new File(fileName)
+    if(!file.exists())
+      sys.error("File %s does not exist".format(fileName))
+
+    val sc = new Scanner(file)
+
+    val numObjects = sc.nextInt()
+    val numConstraints = sc.nextInt()
+    val optimum = sc.nextDouble()
+
+    val values = new Array[Double](numObjects)
+    for(j <- values.indices)
+      values(j) = sc.nextDouble()
+
+    val constraints = Array.ofDim[Double](numConstraints, numObjects)
+    for(i <- constraints.indices)
+      for(j <- constraints(i).indices)
+        constraints(i)(j) = sc.nextDouble()
+
+    val weights = new Array[Double](numConstraints)
+    for(i <- weights.indices)
+      weights(i) = sc.nextDouble()
+
+    sc.close()
+
+    new MKProblem(values, constraints, weights, optimum)
+  }
+
+  def apply(fileName : String) = fromFile(fileName)
+}
+
+
 class MKProblem( val profits : Array[Double]
                 , val constraints : Array[Array[Double]]
                 , val capacities : Array[Double]
                 , val optimum : Fitness = 0
-                ) extends Problem[Bit] {
+                ) extends Problem[Gene, Fitness] {
 
   val numObjects : Int = profits.length
 
@@ -71,7 +121,7 @@ class MKProblem( val profits : Array[Double]
 
 
   // Evals objective function for an assignments of vars
-  def totalProfit(xs : Chromosome[Bit]) : Fitness = {
+  def totalProfit(xs : Chromosome[Gene]) : Fitness = {
     // require(xs.length == numObjects, "MKProblem.evaluate: Number of variables must be the same as number of objects")
     var s = 0.0
     for(j <- 0 until numObjects)
@@ -80,7 +130,7 @@ class MKProblem( val profits : Array[Double]
   }
 
   // Checks if an assignment satisfies all constraints
-  def checkConstraints(xs : Chromosome[Bit]) : Boolean = {
+  def checkConstraints(xs : Chromosome[Gene]) : Boolean = {
     for(i <- 0 until numConstraints) {
       var s = 0.0
       for(j <- 0 until numObjects)
@@ -93,8 +143,8 @@ class MKProblem( val profits : Array[Double]
 
   protected val heuristicOrder : Array[Int] = Array.range(0, numObjects)
 
-  protected val zero : Byte = 0
-  protected val one : Byte = 1
+  protected val zero = EA.Bits.zero
+  protected val one = EA.Bits.one
 
   def repair(xs : Chromosome[Bit]): Unit = {
     val sums = new Array[Double](numConstraints)
@@ -150,7 +200,8 @@ class MKProblem( val profits : Array[Double]
 
   val numVars = numObjects
 
-  def computeFitness(ind : Individual[Bit]) : Fitness = {
+
+  def computeFitness(ind : Individual[Gene, Fitness]) : Fitness = {
     repair(ind.chromosome)
     /*
     if(!checkConstraints(xs))
@@ -159,52 +210,12 @@ class MKProblem( val profits : Array[Double]
     totalProfit(ind.chromosome)
   }
 
-  def isOptimal(ind : Individual[Bit]) : Boolean =
+  def isOptimal(ind : Individual[Gene, Fitness]) : Boolean =
     ind.fitness == optimum
 
   override def toString : String = {
     "toDo..." // toDo
   }
-}
-
-object MKProblem {
-  def apply(values : Array[Double], constraints : Array[Array[Double]],  weights : Array[Double], optimum : Fitness = 0) =
-    new MKProblem(values, constraints, weights, optimum)
-
-  // Reads a problem from a text file
-  def fromFile(fileName : String) : MKProblem = {
-    import java.io.File
-    import java.util.Scanner
-
-    val file = new File(fileName)
-    if(!file.exists())
-      sys.error("File %s does not exist".format(fileName))
-
-    val sc = new Scanner(file)
-
-    val numObjects = sc.nextInt()
-    val numConstraints = sc.nextInt()
-    val optimum = sc.nextDouble()
-
-    val values = new Array[Double](numObjects)
-    for(j <- values.indices)
-      values(j) = sc.nextDouble()
-
-    val constraints = Array.ofDim[Double](numConstraints, numObjects)
-    for(i <- constraints.indices)
-      for(j <- constraints(i).indices)
-        constraints(i)(j) = sc.nextDouble()
-
-    val weights = new Array[Double](numConstraints)
-    for(i <- weights.indices)
-      weights(i) = sc.nextDouble()
-
-    sc.close()
-
-    new MKProblem(values, constraints, weights, optimum)
-  }
-
-  def apply(fileName : String) = fromFile(fileName)
 }
 
 
@@ -255,12 +266,13 @@ object ChuBeasleyEA extends App {
   import java.util.Locale
   Locale.setDefault(new Locale.Builder().setLanguage("en").setRegion("US").build())
 
-  /*
+
   val seed = 0
   val fileName = "data/MKP/OR10x100-00.kp1"
   val maxTime = 10
-  */
 
+
+  /*
   if(args.length < 3) {
     println("Usage: <seed> <file> <maxTime(seg.)>")
     System.exit(0)
@@ -268,18 +280,19 @@ object ChuBeasleyEA extends App {
   val seed = args(0).toInt
   val fileName = args(1)
   val maxTime = args(2).toDouble
+  */
 
   val p = ChuBeasley.fromFile(fileName)
-  val logger = Logger() // Execution time due to Simplex is not considered
+  val logger = Logger[Fitness]() // Execution time due to Simplex is not considered
 
-  val ea = new StandardSteadyStateNonRepeatedPopTimedBinaryEA(seed = seed, logger = logger, problem = p, maxRunTime = maxTime) {
-    override def replace(ind : Individual[Bit], eaState : EAState[Bit]) {
+  val ea = new StandardSteadyStateNonRepeatedPopTimedBinaryEA[Fitness](seed = seed, logger = logger, problem = p, maxRunTime = maxTime) {
+    override def replace(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]) {
       Replacement.randomButBest(population.size/2, eaState.population, ind, eaState.rnd)
     }
 
-    override def recombine(child : Individual[Bit], parent1 : Individual[Bit], parent2 : Individual[Bit], eaState : EAState[Bit]): Unit = {
+    override def recombine(child : Individual[Gene, Fitness], parent1 : Individual[Bit, Fitness], parent2 : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]): Unit = {
       if(eaState.rnd.nextDouble() < 0.5)
-        Recombination.uniform(child, parent1, parent2, eaState.rnd)
+        Recombination.uniform(child.chromosome, parent1.chromosome, parent2.chromosome, eaState.rnd)
       else {
         val pt = eaState.rnd.nextInt(child.chromosome.size)
 
@@ -291,7 +304,7 @@ object ChuBeasleyEA extends App {
     }
 
 
-    override def evaluate(ind : Individual[Bit], eaState : EAState[Bit]) : Fitness = {
+    override def evaluate(ind : Individual[Gene, Fitness], eaState : EAState[Gene, Fitness]) : Fitness = {
       val l = p.heuristicOrder.length
       val idx1 = eaState.rnd.nextInt(l)
       val idx2 = eaState.rnd.nextInt(l)
@@ -318,3 +331,4 @@ object ChuBeasleyEA extends App {
     result.logger.print(step = 50)
   }
 }
+

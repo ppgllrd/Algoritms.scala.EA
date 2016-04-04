@@ -8,13 +8,13 @@
 
 package EA
 
-trait Problem[Gene] {
+trait Problem[Gene, Fitness] {
   // number of variables in chromosome
   def numVars : Int
 
   // evaluates the chromosome corresponding to a solution
-  def computeFitness(ind : Individual[Gene]) : Fitness
+  def computeFitness(ind : Individual[Gene, Fitness]) : Fitness
 
   // checks if solution is optimal
-  def isOptimal(ind : Individual[Gene]) : Boolean
+  def isOptimal(ind : Individual[Gene, Fitness]) : Boolean
 }

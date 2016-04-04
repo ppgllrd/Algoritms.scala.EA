@@ -11,15 +11,24 @@ package EA
 import java.util.Random
 
 object Recombination {
-  def uniform[Gene](child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], rnd : Random): Unit = {
-    for(i <- 0 until child.chromosome.size)
-      child.chromosome(i) = (if(rnd.nextDouble() < 0.5) parent1 else parent2).chromosome(i)
+  def uniform[Gene](child : Chromosome[Gene], parent1 : Chromosome[Gene], parent2 : Chromosome[Gene], rnd : Random): Unit = {
+    for(i <- 0 until child.size)
+      child(i) = (if(rnd.nextDouble() < 0.5) parent1 else parent2)(i)
   }
 
-  def singlePoint[Gene](child : Individual[Gene], parent1 : Individual[Gene], parent2 : Individual[Gene], rnd : Random): Unit = {
-    val p = rnd.nextInt(child.chromosome.size)
+  def singlePoint[Gene](child : Chromosome[Gene], parent1 : Chromosome[Gene], parent2 : Chromosome[Gene], rnd : Random): Unit = {
+    val p = rnd.nextInt(child.size)
 
-    Array.copy(parent1.chromosome, 0, child.chromosome, 0, p)
-    Array.copy(parent2.chromosome, p, child.chromosome, p, child.chromosome.size-p)
+    for(i <- 0 until p)
+      child(i) = parent1(i)
+    for(i <- p until child.size)
+      child(i) = parent2(i)
+  }
+
+  def singlePoint[Gene](child : ArrayChromosome[Gene], parent1 : ArrayChromosome[Gene], parent2 : ArrayChromosome[Gene], rnd : Random): Unit = {
+    val p = rnd.nextInt(child.size)
+
+    child.copyFrom(parent1, 0, 0, p)
+    child.copyFrom(parent2, p, p, child.size-p)
   }
 }
