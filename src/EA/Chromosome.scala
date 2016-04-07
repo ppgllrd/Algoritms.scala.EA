@@ -8,4 +8,6 @@
 
 package EA
 
-trait Chromosome[Gene] extends collection.mutable.IndexedSeq[Gene]
+trait Chromosome[Gene] extends collection.mutable.IndexedSeq[Gene] {
+  def copyFrom(that : Chromosome[Gene])
+}

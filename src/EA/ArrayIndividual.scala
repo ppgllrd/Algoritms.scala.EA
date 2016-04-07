@@ -11,14 +11,10 @@ package EA
 case class ArrayIndividual[Gene : Manifest, Fitness](numVars : Int) extends Individual[Gene, Fitness] {
   val chromosome = new ArrayChromosome[Gene](numVars)
 
-  // toDo avoid dynamic casting
-  def copyFrom(that : Individual[Gene, Fitness]): Unit = that match {
-    case that : ArrayIndividual[Gene, Fitness] =>
-      this.chromosome.copyFrom(that.chromosome)
-      this.fitness = that.fitness
-    case _ =>
-      sys.error("ArrayIndividual.copyFrom: ArrayIndividual expected")
-    }
+  def copyFrom(that : Individual[Gene, Fitness]): Unit = {
+     this.chromosome.copyFrom(that.chromosome)
+     this.fitness = that.fitness
+  }
 
   override def equals(that : Any): Boolean = that match {
     case ind : ArrayIndividual[Gene,Fitness] =>

@@ -18,8 +18,13 @@ case class ArrayChromosome[Gene : Manifest](override val size : Int) extends Chr
 
   def update(idx : Int, g : Gene) = xs(idx) = g
 
-  def copyFrom(that : ArrayChromosome[Gene]): Unit =
-    Array.copy(that.xs, 0, this.xs, 0, size)
+  // toDo avoid dynamic casting
+  def copyFrom(that : Chromosome[Gene]): Unit = that match {
+    case that : ArrayChromosome[gene] =>
+      Array.copy(that.xs, 0, this.xs, 0, size)
+    case _ =>
+      sys.error("ArrayChromosome.copyFrom: ArrayChromosome expected")
+  }
 
   def copyFrom(that: ArrayChromosome[Gene], srcPos: Int, destPos: Int, length: Int): Unit =
     Array.copy(that.xs, srcPos, this.xs, destPos, length)
